@@ -18,8 +18,6 @@ log = logging.getLogger('zen.PythonAMQDevice')
 
 class ActiveMQBroker(PythonDataSourcePlugin):
 
-    # TODO : Cleanup
-
     proxy_attributes = (
         'zJolokiaPort',
         'zJolokiaUsername',
@@ -30,18 +28,14 @@ class ActiveMQBroker(PythonDataSourcePlugin):
         'broker': 'http://{}:{}/api/jolokia/read/{},service=Health/CurrentStatus',
         }
 
-
     @staticmethod
     def add_tag(result, label):
         return tuple((label, result))
 
     @classmethod
     def config_key(cls, datasource, context):
-        # To run per broker or queue ???
-        log.debug(
-            'In config_key context.device().id is %s datasource.getCycleTime(context) is %s datasource.rrdTemplate().id is %s datasource.id is %s datasource.plugin_classname is %s  ' % (
-            context.device().id, datasource.getCycleTime(context), datasource.rrdTemplate().id, datasource.id,
-            datasource.plugin_classname))
+        log.debug('In config_key {} {} {} {}'.format(context.device().id, datasource.getCycleTime(context),
+                                                     context.id, 'amq-broker'))
         return (
             context.device().id,
             datasource.getCycleTime(context),
@@ -52,12 +46,10 @@ class ActiveMQBroker(PythonDataSourcePlugin):
     @classmethod
     def params(cls, datasource, context):
         log.debug('Starting AMQDevice params')
-        params = {}
-        params['objectName'] = context.objectName
-        log.debug(' params is %s \n' % (params))
+        params = {'objectName': context.objectName}
+        log.debug('params is {}'.format(params))
         return params
 
-    # TODO : with inlinebacks and return yields
     def collect(self, config):
         log.debug('Starting ActiveMQ Broker collect')
 
@@ -66,22 +58,17 @@ class ActiveMQBroker(PythonDataSourcePlugin):
             log.error("%s: IP Address cannot be empty", device.id)
             returnValue(None)
 
-        # log.debug('config: {}'.format(config.datasources[0].__dict__))
-        log.debug('config: {}'.format(config.datasources[0].component))
-        log.debug('config: {}'.format(config.datasources[0].params))
-
         deferreds = []
         sem = DeferredSemaphore(1)
         for datasource in config.datasources:
-            # timespan = max(120, 2 * datasource.cycletime)
-            objectName = datasource.params['objectName']
-            url = self.urls[datasource.datasource].format(ip_address, datasource.zJolokiaPort, objectName)
-            basicAuth = base64.encodestring('{}:{}'.format(datasource.zJolokiaUsername, datasource.zJolokiaPassword))
-            authHeader = "Basic " + basicAuth.strip()
+            object_name = datasource.params['objectName']
+            url = self.urls[datasource.datasource].format(ip_address, datasource.zJolokiaPort, object_name)
+            basic_auth = base64.encodestring('{}:{}'.format(datasource.zJolokiaUsername, datasource.zJolokiaPassword))
+            auth_header = "Basic " + basic_auth.strip()
             d = sem.run(getPage, url,
                         headers={
                             "Accept": "application/json",
-                            "Authorization": authHeader,
+                            "Authorization": auth_header,
                             "User-Agent": "Mozilla/3.0Gold",
                         },
                         )
@@ -91,7 +78,6 @@ class ActiveMQBroker(PythonDataSourcePlugin):
 
     def onSuccess(self, result, config):
         log.debug('Success - result is {}'.format(result))
-        log.debug('Success - config is {}'.format(config.datasources[0].__dict__))
 
         ds_data = {}
         for success, ddata in result:
@@ -100,13 +86,10 @@ class ActiveMQBroker(PythonDataSourcePlugin):
                 metrics = json.loads(ddata[1])
                 ds_data[ds] = metrics
 
-        # log.debug('ds_data: {}'.format(ds_data))
         data = self.new_data()
         for datasource in config.datasources:
             component = prepId(datasource.component)
             broker_health = ds_data['broker']['value']
-            log.debug('component: {}'.format(component))
-            log.debug('health: {}'.format(broker_health))
             if broker_health.startswith('Good'):
                 data['values'][component]['health'] = 0
                 data['events'].append({
@@ -133,7 +116,7 @@ class ActiveMQBroker(PythonDataSourcePlugin):
                     'eventClass': '/Status/AMQ/Broker',
                     'amqHealth': broker_health
                 })
-
+        log.debug('ActiveMQBroker onSuccess data: {}'.format(data))
         return data
 
     def onError(self, result, config):

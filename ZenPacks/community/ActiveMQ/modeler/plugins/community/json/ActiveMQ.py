@@ -1,6 +1,5 @@
 # stdlib Imports
 import json
-import re
 
 # Twisted Imports
 from twisted.internet.defer import inlineCallbacks, returnValue, DeferredSemaphore, DeferredList
@@ -26,9 +25,7 @@ class ActiveMQ(PythonPlugin):
 
     deviceProperties = PythonPlugin.deviceProperties + requiredProperties
 
-    # TODO : firmware and additional data ?
     components = [
-        # ['brokers', 'http://{}:{}/api/jolokia/list'],
         ['brokers', 'http://{}:{}/api/jolokia/read/org.apache.activemq:type=Broker,brokerName=*/'
                     'BrokerName,BrokerVersion,BrokerId,Queues'],
         ['queues', 'http://{}:{}/api/jolokia/read/org.apache.activemq:*,type=Broker,destinationType=Queue'],
@@ -51,8 +48,8 @@ class ActiveMQ(PythonPlugin):
             log.error("%s: IP Address cannot be empty", device.id)
             returnValue(None)
 
-        basicAuth = base64.encodestring('{}:{}'.format(username, password))
-        authHeader = "Basic " + basicAuth.strip()
+        basic_auth = base64.encodestring('{}:{}'.format(username, password))
+        auth_header = "Basic " + basic_auth.strip()
 
         deferreds = []
         sem = DeferredSemaphore(1)
@@ -62,7 +59,7 @@ class ActiveMQ(PythonPlugin):
             d = sem.run(getPage, url,
                         headers={
                             "Accept": "application/json",
-                            "Authorization": authHeader,
+                            "Authorization": auth_header,
                             "User-Agent": "Mozilla/3.0Gold",
                         },
                         )
@@ -85,8 +82,6 @@ class ActiveMQ(PythonPlugin):
             - An ObjectMap, for the device device information
             - A list of RelationshipMaps and ObjectMaps, both
         """
-
-        # TODO: cleanup function process
 
         self.result_data = {}
         for success, result in results:
@@ -113,7 +108,6 @@ class ActiveMQ(PythonPlugin):
         rm_queuesdlq = []
 
         for broker, brokerAttr in brokers_data.items():
-            log.debug('broker: {}={}'.format(broker, brokerAttr))
             om_broker = ObjectMap()
             queue_maps = []
             queuedlq_maps = []
@@ -128,16 +122,11 @@ class ActiveMQ(PythonPlugin):
 
             compname_broker = 'activeMQBrokers/{}'.format(om_broker.id)
             queues = brokerAttr.get('Queues')
-            # for queue, queueAttr in [(queue, queueAttr) for q in queues for (queue, queueAttr) in q.items()]:
             for _, queue in [(_, queue) for q in queues for (_, queue) in q.items()]:
-                log.debug('Queue: ###{}'.format(queue))
                 # TODO: What if queue with same name in different broker ?
                 queue_data = queues_data.get(queue, '')
-                # log.debug('Queue data: ###{}'.format(queue_data))
-                # r = re.search('.*,destinationName=(.*),.*', queue)
                 if queue_data:
                     om_queue = ObjectMap()
-                    # queue_name = r.group(1)
                     queue_name = queue_data['Name']
                     om_queue.id = self.prepId(queue_name)
                     om_queue.title = queue_name
@@ -166,19 +155,5 @@ class ActiveMQ(PythonPlugin):
         rm.extend(rm_queues)
         rm.extend(rm_queuesdlq)
 
-        # log.debug('rm: {}'.format(rm))
-        # log.debug('rm queues: {}'.format(rm_queues))
-        # log.debug('rm queuesDLQ: {}'.format(rm_queuesdlq))
-
-        # log.debug('{}: process maps:{}'.format(device.id, maps))
+        log.debug('{}: process maps:{}'.format(device.id, rm))
         return rm
-
-    def get_brokers(self, log):
-        data = self.result_data.get('brokers', '')
-        log.debug('get_brokers: data1={}'.format(data))
-        if data and data['status'] == 200:
-            data = data.get('value', '')
-        else:
-            return []
-        log.debug('get_brokers: data2={}'.format(data))
-        return []

@@ -33,6 +33,7 @@ classes:
       brokerId:
         label: Broker ID
         grid_display: true
+        label_width: 300
       version:
         label: Version
         grid_display: true
@@ -42,6 +43,7 @@ classes:
         datapoint: broker_health
         renderer: Zenoss.render.severity
         grid_display: true
+        label_width: 40
       objectName:
         label: ObjectName
 
@@ -81,15 +83,6 @@ device_classes:
             plugin_classname: ZenPacks.community.ActiveMQ.dsplugins.ActiveMQBroker.ActiveMQBroker
             datapoints:
               health: GAUGE
-        graphs:
-          Status:
-            units: 1=OK - 0=Failure
-            width: 1000
-            miny: 0
-            maxy: 5
-            graphpoints:
-              Status:
-                dpName: broker_health
 
       ActiveMQQueue:
         targetPythonClass: ZenPacks.community.ActiveMQ.ActiveMQQueue

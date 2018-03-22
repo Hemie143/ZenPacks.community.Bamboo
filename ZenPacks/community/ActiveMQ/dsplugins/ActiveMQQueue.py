@@ -18,9 +18,6 @@ log = logging.getLogger('zen.PythonAMQQueue')
 
 class ActiveMQQueue(PythonDataSourcePlugin):
 
-    # TODO : Cleanup
-    # TODO : Hide attributes from grid
-
     proxy_attributes = (
         'zJolokiaPort',
         'zJolokiaUsername',
@@ -28,19 +25,9 @@ class ActiveMQQueue(PythonDataSourcePlugin):
     )
 
     urls = {
-        'delete': 'http://{}:{}/api/jolokia/read/org.apache.activemq:type=Broker,brokerName=*/'
-                    'BrokerName,BrokerVersion,BrokerId',
         'broker': 'http://{}:{}/api/jolokia/read/{},service=Health/CurrentStatus',
         'queue': 'http://{}:{}/api/jolokia/read/{}/ConsumerCount,DequeueCount,EnqueueCount,ExpiredCount,QueueSize',
         }
-
-    #                   org.apache.activemq:brokerName=service-node1-master,type=Broker
-    # /api/jolokia/read/org.apache.activemq:type=Broker,brokerName=service-node1-master,service=Health/CurrentStatus
-    # /api/jolokia/read/org.apache.activemq:type=Broker,brokerName=service-node1-master,destinationType=Queue,destinationName=be.fednot.delivery.topic/ConsumerCount,DequeueCount,EnqueueCount,ExpiredCount,QueueSize
-    #                   org.apache.activemq:brokerName=service-node1-master,destinationName=be.fednot.delivery.topic,destinationType=Queue,type=Broker
-    # DequeueCount,   EnqueueCount,   ExpiredCount, QueueSize
-    # /api/jolokia/read/org.apache.activemq:type=Broker,brokerName=service-node1-master,destinationType=Queue,destinationName=be.fednot.delivery.topic/ConsumerCount,DequeueCount,EnqueueCount,ExpiredCount,QueueSize
-
 
     @staticmethod
     def add_tag(result, label):
@@ -48,27 +35,22 @@ class ActiveMQQueue(PythonDataSourcePlugin):
 
     @classmethod
     def config_key(cls, datasource, context):
-        # To run per broker or queue ???
-        log.debug(
-            'In config_key context.device().id is %s datasource.getCycleTime(context) is %s datasource.rrdTemplate().id is %s datasource.id is %s datasource.plugin_classname is %s  ' % (
-            context.device().id, datasource.getCycleTime(context), datasource.rrdTemplate().id, datasource.id,
-            datasource.plugin_classname))
+        log.debug('In config_key {} {} {} {}'.format(context.device().id, datasource.getCycleTime(context),
+                                                     context.id, 'amq-queue'))
         return (
             context.device().id,
             datasource.getCycleTime(context),
             context.id,
-            'amq-broker'
+            'amq-queue'
         )
 
     @classmethod
     def params(cls, datasource, context):
         log.debug('Starting AMQDevice params')
-        params = {}
-        params['objectName'] = context.objectName
-        log.debug(' params is %s \n' % (params))
+        params = {'objectName': context.objectName}
+        log.debug('params is {}'.format(params))
         return params
 
-    # TODO : with inlinebacks and return yields
     def collect(self, config):
         log.debug('Starting ActiveMQ Broker collect')
 
@@ -80,16 +62,14 @@ class ActiveMQQueue(PythonDataSourcePlugin):
         deferreds = []
         sem = DeferredSemaphore(1)
         for datasource in config.datasources:
-            # timespan = max(120, 2 * datasource.cycletime)
-            objectName = datasource.params['objectName']
-            log.debug('objectName: {}'.format(objectName))
-            url = self.urls[datasource.datasource].format(ip_address, datasource.zJolokiaPort, objectName)
-            basicAuth = base64.encodestring('{}:{}'.format(datasource.zJolokiaUsername, datasource.zJolokiaPassword))
-            authHeader = "Basic " + basicAuth.strip()
+            object_name = datasource.params['objectName']
+            url = self.urls[datasource.datasource].format(ip_address, datasource.zJolokiaPort, object_name)
+            basic_auth = base64.encodestring('{}:{}'.format(datasource.zJolokiaUsername, datasource.zJolokiaPassword))
+            auth_header = "Basic " + basic_auth.strip()
             d = sem.run(getPage, url,
                         headers={
                             "Accept": "application/json",
-                            "Authorization": authHeader,
+                            "Authorization": auth_header,
                             "User-Agent": "Mozilla/3.0Gold",
                         },
                         )
@@ -101,7 +81,6 @@ class ActiveMQQueue(PythonDataSourcePlugin):
 
     def onSuccess(self, result, config):
         log.debug('Success - result is {}'.format(result))
-        log.debug('Success - config is {}'.format(config.datasources[0].__dict__))
 
         ds_data = {}
         for success, ddata in result:
@@ -110,7 +89,6 @@ class ActiveMQQueue(PythonDataSourcePlugin):
                 metrics = json.loads(ddata[1])
                 ds_data[ds] = metrics
 
-        log.debug('ds_data: {}'.format(ds_data))
         data = self.new_data()
         for datasource in config.datasources:
             component = prepId(datasource.component)
@@ -122,6 +100,7 @@ class ActiveMQQueue(PythonDataSourcePlugin):
             data['values'][component]['dequeueCount'] = values['DequeueCount']
             data['values'][component]['expiredCount'] = values['ExpiredCount']
             data['values'][component]['queueSize'] = values['QueueSize']
+        log.debug('ActiveMQQueue onSuccess data: {}'.format(data))
         return data
 
     def onError(self, result, config):
