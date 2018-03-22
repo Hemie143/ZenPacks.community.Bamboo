@@ -19,7 +19,6 @@ log = logging.getLogger('zen.PythonAMQDevice')
 class ActiveMQBroker(PythonDataSourcePlugin):
 
     # TODO : Cleanup
-    # TODO : Hide attributes from grid
 
     proxy_attributes = (
         'zJolokiaPort',
@@ -28,15 +27,8 @@ class ActiveMQBroker(PythonDataSourcePlugin):
     )
 
     urls = {
-        'delete': 'http://{}:{}/api/jolokia/read/org.apache.activemq:type=Broker,brokerName=*/'
-                    'BrokerName,BrokerVersion,BrokerId',
         'broker': 'http://{}:{}/api/jolokia/read/{},service=Health/CurrentStatus',
         }
-
-    #                   org.apache.activemq:brokerName=service-node1-master,type=Broker
-    # /api/jolokia/read/org.apache.activemq:type=Broker,brokerName=service-node1-master,service=Health/CurrentStatus
-    # org.apache.activemq:type=Broker,brokerName=service-node2-master,destinationType=Queue,destinationName=be.fednot.delivery.topic
-    # http://10.0.40.16:8161/api/jolokia/read/org.apache.activemq:type=Broker,brokerName=service-node2-master,destinationType=Queue,destinationName=be.fednot.delivery.topic/ConsumerCount
 
 
     @staticmethod
@@ -116,7 +108,7 @@ class ActiveMQBroker(PythonDataSourcePlugin):
             log.debug('component: {}'.format(component))
             log.debug('health: {}'.format(broker_health))
             if broker_health.startswith('Good'):
-                data['values'][component]['health'] = 1
+                data['values'][component]['health'] = 0
                 data['events'].append({
                     'device': config.id,
                     'component': component,
@@ -124,11 +116,12 @@ class ActiveMQBroker(PythonDataSourcePlugin):
                     'eventKey': 'AMQBrokerHealth',
                     'eventClassKey': 'AMQBrokerHealth',
                     'summary': 'Broker "{}" - Status is OK'.format(component),
+                    'message': broker_health,
                     'eventClass': '/Status/AMQ/Broker',
                     'amqHealth': broker_health
                 })
             else:
-                data['values'][component]['health'] = 0
+                data['values'][component]['health'] = 3
                 data['events'].append({
                     'device': config.id,
                     'component': component,
@@ -136,6 +129,7 @@ class ActiveMQBroker(PythonDataSourcePlugin):
                     'eventKey': 'AMQBrokerHealth',
                     'eventClassKey': 'AMQBrokerHealth',
                     'summary': 'Broker "{}" - Status failure'.format(component),
+                    'message': broker_health,
                     'eventClass': '/Status/AMQ/Broker',
                     'amqHealth': broker_health
                 })

@@ -28,10 +28,20 @@ classes:
     base: [zenpacklib.Component]
     label: ActiveMQ Broker
     properties:
+      DEFAULTS:
+        grid_display: false
       brokerId:
         label: Broker ID
+        grid_display: true
       version:
         label: Version
+        grid_display: true
+      status:
+        label: Status
+        type: string
+        datapoint: broker_health
+        renderer: Zenoss.render.severity
+        grid_display: true
       objectName:
         label: ObjectName
 
@@ -41,6 +51,7 @@ classes:
     properties:
       objectName:
         label: ObjectName
+        grid_display: false
     monitoring_templates: [ActiveMQQueue]
 
   ActiveMQQueueDLQ:
@@ -49,6 +60,7 @@ classes:
     properties:
       objectName:
         label: ObjectName
+        grid_display: false
     monitoring_templates: [ActiveMQQueueDLQ]
 
 device_classes:
@@ -74,7 +86,7 @@ device_classes:
             units: 1=OK - 0=Failure
             width: 1000
             miny: 0
-            maxy: 1
+            maxy: 5
             graphpoints:
               Status:
                 dpName: broker_health
