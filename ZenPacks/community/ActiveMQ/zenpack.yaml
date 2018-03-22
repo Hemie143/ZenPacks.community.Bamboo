@@ -1,0 +1,268 @@
+name: ZenPacks.community.ActiveMQ
+
+zProperties:
+  zJolokiaPort:
+    category: Jolokia
+    type: int
+    default: 8161
+  zJolokiaUsername:
+    category: Jolokia
+    type: string
+    default: admin
+  zJolokiaPassword:
+    category: Jolokia
+    type: password
+    default: admin
+
+class_relationships:
+  - ActiveMQDevice 1:MC ActiveMQBroker
+  - ActiveMQBroker 1:MC ActiveMQQueue
+  - ActiveMQBroker 1:MC ActiveMQQueueDLQ
+
+classes:
+  ActiveMQDevice:
+    base: [zenpacklib.Device]
+    label: AMQ Device
+
+  ActiveMQBroker:
+    base: [zenpacklib.Component]
+    label: ActiveMQ Broker
+    properties:
+      brokerId:
+        label: Broker ID
+      version:
+        label: Version
+      objectName:
+        label: ObjectName
+
+  ActiveMQQueue:
+    base: [zenpacklib.Component]
+    label: ActiveMQ Queue
+    properties:
+      objectName:
+        label: ObjectName
+    monitoring_templates: [ActiveMQQueue]
+
+  ActiveMQQueueDLQ:
+    base: [zenpacklib.Component]
+    label: ActiveMQ Dead Letter Queue
+    properties:
+      objectName:
+        label: ObjectName
+    monitoring_templates: [ActiveMQQueueDLQ]
+
+device_classes:
+  /Server/Linux/ActiveMQ:
+    zProperties:
+      zPythonClass: ZenPacks.community.ActiveMQ.ActiveMQDevice
+      zCollectorPlugins:
+        - community.json.ActiveMQ
+      zDeviceTemplates:
+        - Device
+
+    templates:
+      ActiveMQBroker:
+        targetPythonClass: ZenPacks.community.ActiveMQ.ActiveMQBroker
+        datasources:
+          broker:
+            type: Python
+            plugin_classname: ZenPacks.community.ActiveMQ.dsplugins.ActiveMQBroker.ActiveMQBroker
+            datapoints:
+              health: GAUGE
+        graphs:
+          Status:
+            units: 1=OK - 0=Failure
+            width: 1000
+            miny: 0
+            maxy: 1
+            graphpoints:
+              Status:
+                dpName: broker_health
+
+      ActiveMQQueue:
+        targetPythonClass: ZenPacks.community.ActiveMQ.ActiveMQQueue
+        datasources:
+          queue:
+            type: Python
+            plugin_classname: ZenPacks.community.ActiveMQ.dsplugins.ActiveMQQueue.ActiveMQQueue
+            datapoints:
+              consumerCount:
+                rrdtype: GAUGE
+                createCmd: 'RRA:AVERAGE:0.5:1:600
+                  RRA:AVERAGE:0.5:6:600
+                  RRA:AVERAGE:0.5:24:600
+                  RRA:AVERAGE:0.5:288:600
+                  RRA:MAX:0.5:6:600
+                  RRA:MAX:0.5:24:600
+                  RRA:MAX:0.5:288:600
+                  RRA:LAST:0.5:1:600
+                  RRA:LAST:0.5:6:600
+                  RRA:LAST:0.5:24:600
+                  RRA:LAST:0.5:288:600'
+              enqueueCount:
+                rrdtype: GAUGE
+                createCmd: 'RRA:AVERAGE:0.5:1:600
+                  RRA:AVERAGE:0.5:6:600
+                  RRA:AVERAGE:0.5:24:600
+                  RRA:AVERAGE:0.5:288:600
+                  RRA:MAX:0.5:6:600
+                  RRA:MAX:0.5:24:600
+                  RRA:MAX:0.5:288:600
+                  RRA:LAST:0.5:1:600
+                  RRA:LAST:0.5:6:600
+                  RRA:LAST:0.5:24:600
+                  RRA:LAST:0.5:288:600'
+              dequeueCount:
+                rrdtype: GAUGE
+                createCmd: 'RRA:AVERAGE:0.5:1:600
+                  RRA:AVERAGE:0.5:6:600
+                  RRA:AVERAGE:0.5:24:600
+                  RRA:AVERAGE:0.5:288:600
+                  RRA:MAX:0.5:6:600
+                  RRA:MAX:0.5:24:600
+                  RRA:MAX:0.5:288:600
+                  RRA:LAST:0.5:1:600
+                  RRA:LAST:0.5:6:600
+                  RRA:LAST:0.5:24:600
+                  RRA:LAST:0.5:288:600'
+              expiredCount:
+                rrdtype: GAUGE
+                createCmd: 'RRA:AVERAGE:0.5:1:600
+                  RRA:AVERAGE:0.5:6:600
+                  RRA:AVERAGE:0.5:24:600
+                  RRA:AVERAGE:0.5:288:600
+                  RRA:MAX:0.5:6:600
+                  RRA:MAX:0.5:24:600
+                  RRA:MAX:0.5:288:600
+                  RRA:LAST:0.5:1:600
+                  RRA:LAST:0.5:6:600
+                  RRA:LAST:0.5:24:600
+                  RRA:LAST:0.5:288:600'
+              queueSize:
+                rrdtype: GAUGE
+                createCmd: 'RRA:AVERAGE:0.5:1:600
+                  RRA:AVERAGE:0.5:6:600
+                  RRA:AVERAGE:0.5:24:600
+                  RRA:AVERAGE:0.5:288:600
+                  RRA:MAX:0.5:6:600
+                  RRA:MAX:0.5:24:600
+                  RRA:MAX:0.5:288:600
+                  RRA:LAST:0.5:1:600
+                  RRA:LAST:0.5:6:600
+                  RRA:LAST:0.5:24:600
+                  RRA:LAST:0.5:288:600'
+        graphs:
+          Messages:
+            units: messages
+            width: 1000
+            miny: 0
+            graphpoints:
+              Consumer Count:
+                dpName: queue_consumerCount
+              Enqueue Count:
+                dpName: queue_enqueueCount
+              Dequeue Count:
+                dpName: queue_dequeueCount
+              Expired Count:
+                dpName: queue_expiredCount
+          Queue:
+            units: messages
+            width: 1000
+            miny: 0
+            graphpoints:
+              Queue Size:
+                dpName: queue_queueSize
+
+      ActiveMQQueueDLQ:
+        targetPythonClass: ZenPacks.community.ActiveMQ.ActiveMQQueueDLQ
+        datasources:
+          queue:
+            type: Python
+            plugin_classname: ZenPacks.community.ActiveMQ.dsplugins.ActiveMQQueue.ActiveMQQueue
+            datapoints:
+              consumerCount:
+                rrdtype: GAUGE
+                createCmd: 'RRA:AVERAGE:0.5:1:600
+                  RRA:AVERAGE:0.5:6:600
+                  RRA:AVERAGE:0.5:24:600
+                  RRA:AVERAGE:0.5:288:600
+                  RRA:MAX:0.5:6:600
+                  RRA:MAX:0.5:24:600
+                  RRA:MAX:0.5:288:600
+                  RRA:LAST:0.5:1:600
+                  RRA:LAST:0.5:6:600
+                  RRA:LAST:0.5:24:600
+                  RRA:LAST:0.5:288:600'
+              enqueueCount:
+                rrdtype: GAUGE
+                createCmd: 'RRA:AVERAGE:0.5:1:600
+                  RRA:AVERAGE:0.5:6:600
+                  RRA:AVERAGE:0.5:24:600
+                  RRA:AVERAGE:0.5:288:600
+                  RRA:MAX:0.5:6:600
+                  RRA:MAX:0.5:24:600
+                  RRA:MAX:0.5:288:600
+                  RRA:LAST:0.5:1:600
+                  RRA:LAST:0.5:6:600
+                  RRA:LAST:0.5:24:600
+                  RRA:LAST:0.5:288:600'
+              dequeueCount:
+                rrdtype: GAUGE
+                createCmd: 'RRA:AVERAGE:0.5:1:600
+                  RRA:AVERAGE:0.5:6:600
+                  RRA:AVERAGE:0.5:24:600
+                  RRA:AVERAGE:0.5:288:600
+                  RRA:MAX:0.5:6:600
+                  RRA:MAX:0.5:24:600
+                  RRA:MAX:0.5:288:600
+                  RRA:LAST:0.5:1:600
+                  RRA:LAST:0.5:6:600
+                  RRA:LAST:0.5:24:600
+                  RRA:LAST:0.5:288:600'
+              expiredCount:
+                rrdtype: GAUGE
+                createCmd: 'RRA:AVERAGE:0.5:1:600
+                  RRA:AVERAGE:0.5:6:600
+                  RRA:AVERAGE:0.5:24:600
+                  RRA:AVERAGE:0.5:288:600
+                  RRA:MAX:0.5:6:600
+                  RRA:MAX:0.5:24:600
+                  RRA:MAX:0.5:288:600
+                  RRA:LAST:0.5:1:600
+                  RRA:LAST:0.5:6:600
+                  RRA:LAST:0.5:24:600
+                  RRA:LAST:0.5:288:600'
+              queueSize:
+                rrdtype: GAUGE
+                createCmd: 'RRA:AVERAGE:0.5:1:600
+                  RRA:AVERAGE:0.5:6:600
+                  RRA:AVERAGE:0.5:24:600
+                  RRA:AVERAGE:0.5:288:600
+                  RRA:MAX:0.5:6:600
+                  RRA:MAX:0.5:24:600
+                  RRA:MAX:0.5:288:600
+                  RRA:LAST:0.5:1:600
+                  RRA:LAST:0.5:6:600
+                  RRA:LAST:0.5:24:600
+                  RRA:LAST:0.5:288:600'
+        graphs:
+          Messages:
+            units: messages
+            width: 1000
+            miny: 0
+            graphpoints:
+              Consumer Count:
+                dpName: queue_consumerCount
+              Enqueue Count:
+                dpName: queue_enqueueCount
+              Dequeue Count:
+                dpName: queue_dequeueCount
+              Expired Count:
+                dpName: queue_expiredCount
+          Queue:
+            units: messages
+            width: 1000
+            miny: 0
+            graphpoints:
+              Queue Size:
+                dpName: queue_queueSize
