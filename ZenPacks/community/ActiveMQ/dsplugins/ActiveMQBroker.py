@@ -25,8 +25,9 @@ class ActiveMQBroker(PythonDataSourcePlugin):
     )
 
     urls = {
-        'broker': 'http://{}:{}/api/jolokia/read/{},service=Health/CurrentStatus',
-        }
+        'brokerhealth': 'http://{}:{}/api/jolokia/read/{},service=Health/CurrentStatus',
+        'broker': 'http://{}:{}/api/jolokia/read/{}/UptimeMillis',
+    }
 
     @staticmethod
     def add_tag(result, label):
@@ -89,7 +90,10 @@ class ActiveMQBroker(PythonDataSourcePlugin):
         data = self.new_data()
         for datasource in config.datasources:
             component = prepId(datasource.component)
-            broker_health = ds_data['broker']['value']
+            broker_health = ds_data['brokerhealth']['value']
+            uptimemillis = ds_data['broker']['value']
+            data['values'][component]['uptime'] = uptimemillis / 1000 / 60
+            log.debug('uptime: {}'.format(uptimemillis))
             if broker_health.startswith('Good'):
                 data['values'][component]['health'] = 0
                 data['events'].append({

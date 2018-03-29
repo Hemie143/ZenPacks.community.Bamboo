@@ -78,11 +78,24 @@ device_classes:
       ActiveMQBroker:
         targetPythonClass: ZenPacks.community.ActiveMQ.ActiveMQBroker
         datasources:
-          broker:
+          brokerhealth:
             type: Python
             plugin_classname: ZenPacks.community.ActiveMQ.dsplugins.ActiveMQBroker.ActiveMQBroker
             datapoints:
               health: GAUGE
+          broker:
+            type: Python
+            plugin_classname: ZenPacks.community.ActiveMQ.dsplugins.ActiveMQBroker.ActiveMQBroker
+            datapoints:
+              uptime: GAUGE
+        graphs:
+          Uptime:
+            units: minutes
+            width: 1000
+            miny: 0
+            graphpoints:
+              Uptime:
+                dpName: broker_uptime
 
       ActiveMQQueue:
         targetPythonClass: ZenPacks.community.ActiveMQ.ActiveMQQueue
@@ -164,10 +177,6 @@ device_classes:
             graphpoints:
               Consumer Count:
                 dpName: queue_consumerCount
-              Enqueue Count:
-                dpName: queue_enqueueCount
-              Dequeue Count:
-                dpName: queue_dequeueCount
               Expired Count:
                 dpName: queue_expiredCount
           Queue:
@@ -177,6 +186,15 @@ device_classes:
             graphpoints:
               Queue Size:
                 dpName: queue_queueSize
+          Flow:
+            units: messages
+            width: 1000
+            miny: 0
+            graphpoints:
+              Enqueue Count:
+                dpName: queue_enqueueCount
+              Dequeue Count:
+                dpName: queue_dequeueCount
 
       ActiveMQQueueDLQ:
         targetPythonClass: ZenPacks.community.ActiveMQ.ActiveMQQueueDLQ
@@ -258,10 +276,6 @@ device_classes:
             graphpoints:
               Consumer Count:
                 dpName: queue_consumerCount
-              Enqueue Count:
-                dpName: queue_enqueueCount
-              Dequeue Count:
-                dpName: queue_dequeueCount
               Expired Count:
                 dpName: queue_expiredCount
           Queue:
@@ -271,3 +285,12 @@ device_classes:
             graphpoints:
               Queue Size:
                 dpName: queue_queueSize
+          Flow:
+            units: messages
+            width: 1000
+            miny: 0
+            graphpoints:
+              Enqueue Count:
+                dpName: queue_enqueueCount
+              Dequeue Count:
+                dpName: queue_dequeueCount

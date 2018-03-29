@@ -132,7 +132,9 @@ class ActiveMQ(PythonPlugin):
                     om_queue.title = queue_name
                     om_queue.objectName = queue
 
-                    queue_dlq = queue_data['DLQ']
+                    # DLQ detection based on attribute
+                    # queue_dlq = queue_data['DLQ']
+                    queue_dlq = queue_name.startswith('DLQ')
                     if queue_dlq:
                         queuedlq_maps.append(om_queue)
                     else:
