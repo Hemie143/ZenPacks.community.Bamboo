@@ -26,13 +26,14 @@ class ActiveMQQueue(PythonDataSourcePlugin):
 
     urls = {
         'broker': 'http://{}:{}/api/jolokia/read/{},service=Health/CurrentStatus',
-        'queue': 'http://{}:{}/api/jolokia/read/{}/ConsumerCount,DequeueCount,EnqueueCount,ExpiredCount,QueueSize',
+        'queue': 'http://{}:{}/api/jolokia/read/{}/ConsumerCount,DequeueCount,EnqueueCount,ExpiredCount,QueueSize,AverageMessageSize,MaxMessageSize',
         }
 
     @staticmethod
     def add_tag(result, label):
         return tuple((label, result))
 
+    # TODO: check config_key queue
     @classmethod
     def config_key(cls, datasource, context):
         log.debug('In config_key {} {} {} {}'.format(context.device().id, datasource.getCycleTime(context),
@@ -100,6 +101,8 @@ class ActiveMQQueue(PythonDataSourcePlugin):
             data['values'][component]['dequeueCount'] = values['DequeueCount']
             data['values'][component]['expiredCount'] = values['ExpiredCount']
             data['values'][component]['queueSize'] = values['QueueSize']
+            data['values'][component]['averageMessageSize'] = values['AverageMessageSize']
+            data['values'][component]['maxMessageSize'] = values['MaxMessageSize']
         log.debug('ActiveMQQueue onSuccess data: {}'.format(data))
         return data
 

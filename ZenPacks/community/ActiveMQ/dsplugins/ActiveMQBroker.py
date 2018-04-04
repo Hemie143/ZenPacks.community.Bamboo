@@ -33,6 +33,7 @@ class ActiveMQBroker(PythonDataSourcePlugin):
     def add_tag(result, label):
         return tuple((label, result))
 
+    # TODO: check config_key broker
     @classmethod
     def config_key(cls, datasource, context):
         log.debug('In config_key {} {} {} {}'.format(context.device().id, datasource.getCycleTime(context),

@@ -169,6 +169,32 @@ device_classes:
                   RRA:LAST:0.5:6:600
                   RRA:LAST:0.5:24:600
                   RRA:LAST:0.5:288:600'
+              averageMessageSize:
+                rrdtype: GAUGE
+                createCmd: 'RRA:AVERAGE:0.5:1:600
+                  RRA:AVERAGE:0.5:6:600
+                  RRA:AVERAGE:0.5:24:600
+                  RRA:AVERAGE:0.5:288:600
+                  RRA:MAX:0.5:6:600
+                  RRA:MAX:0.5:24:600
+                  RRA:MAX:0.5:288:600
+                  RRA:LAST:0.5:1:600
+                  RRA:LAST:0.5:6:600
+                  RRA:LAST:0.5:24:600
+                  RRA:LAST:0.5:288:600'
+              maxMessageSize:
+                rrdtype: GAUGE
+                createCmd: 'RRA:AVERAGE:0.5:1:600
+                  RRA:AVERAGE:0.5:6:600
+                  RRA:AVERAGE:0.5:24:600
+                  RRA:AVERAGE:0.5:288:600
+                  RRA:MAX:0.5:6:600
+                  RRA:MAX:0.5:24:600
+                  RRA:MAX:0.5:288:600
+                  RRA:LAST:0.5:1:600
+                  RRA:LAST:0.5:6:600
+                  RRA:LAST:0.5:24:600
+                  RRA:LAST:0.5:288:600'
         graphs:
           Messages:
             units: messages
@@ -195,6 +221,15 @@ device_classes:
                 dpName: queue_enqueueCount
               Dequeue Count:
                 dpName: queue_dequeueCount
+          Message size:
+            units: bytes
+            width: 1000
+            miny: 0
+            graphpoints:
+              Average Message Size:
+                dpName: queue_averageMessageSize
+              Max Message Size:
+                dpName: queue_maxMessageSize
 
       ActiveMQQueueDLQ:
         targetPythonClass: ZenPacks.community.ActiveMQ.ActiveMQQueueDLQ
