@@ -13,7 +13,7 @@ from ZenPacks.zenoss.PythonCollector.datasources.PythonDataSource import PythonD
 from Products.ZenUtils.Utils import prepId
 
 # Setup logging
-log = logging.getLogger('zen.PythonAMQDevice')
+log = logging.getLogger('zen.PythonAMQBroker')
 
 
 class ActiveMQBroker(PythonDataSourcePlugin):
@@ -91,7 +91,12 @@ class ActiveMQBroker(PythonDataSourcePlugin):
         data = self.new_data()
         for datasource in config.datasources:
             component = prepId(datasource.component)
+            log.debug('component: {}/{}'.format(config.id, component))
+            if 'brokerhealth' not in ds_data:
+                continue
             broker_health = ds_data['brokerhealth']['value']
+            if 'broker' not in ds_data:
+                continue
             uptimemillis = ds_data['broker']['value']
             data['values'][component]['uptime'] = uptimemillis / 1000 / 60
             log.debug('uptime: {}'.format(uptimemillis))

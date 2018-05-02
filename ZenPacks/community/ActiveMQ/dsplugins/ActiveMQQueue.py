@@ -65,8 +65,10 @@ class ActiveMQQueue(PythonDataSourcePlugin):
         for datasource in config.datasources:
             object_name = datasource.params['objectName']
             url = self.urls[datasource.datasource].format(ip_address, datasource.zJolokiaPort, object_name)
+            # log.debug('ActiveMQ Broker url: {}'.format(url))
             basic_auth = base64.encodestring('{}:{}'.format(datasource.zJolokiaUsername, datasource.zJolokiaPassword))
             auth_header = "Basic " + basic_auth.strip()
+            # log.debug('ActiveMQ Broker auth_header: {}'.format(auth_header))
             d = sem.run(getPage, url,
                         headers={
                             "Accept": "application/json",
@@ -92,9 +94,11 @@ class ActiveMQQueue(PythonDataSourcePlugin):
 
         data = self.new_data()
         for datasource in config.datasources:
+            if 'queue' not in ds_data:
+                continue
             component = prepId(datasource.component)
+            log.debug('component: {}/{}'.format(config.id, component))
             values = ds_data['queue']['value']
-            log.debug('component: {}'.format(component))
             log.debug('values: {}'.format(values))
             data['values'][component]['consumerCount'] = values['ConsumerCount']
             data['values'][component]['enqueueCount'] = values['EnqueueCount']
