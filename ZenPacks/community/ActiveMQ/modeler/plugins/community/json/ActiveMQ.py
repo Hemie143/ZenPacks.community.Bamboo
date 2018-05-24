@@ -78,7 +78,7 @@ class ActiveMQ(PythonPlugin):
                 self._eventService.sendEvent(dict(
                     summary='Modeler plugin community.json.ActiveMQ returned no results.',
                     message=result.getErrorMessage(),
-                    eventClass='/Status',
+                    eventClass='/Status/Jolokia',
                     eventClassKey='ActiveMQ_ConnectionError',
                     device=device.id,
                     eventKey='|'.join(('ActiveMQPlugin', device.id)),
@@ -90,7 +90,7 @@ class ActiveMQ(PythonPlugin):
         self._eventService.sendEvent(dict(
             summary='Modeler plugin community.json.ActiveMQ successful.',
             message='',
-            eventClass='/Status',
+            eventClass='/Status/Jolokia',
             eventClassKey='ActiveMQ_ConnectionOK',
             device=device.id,
             eventKey='|'.join(('ActiveMQPlugin', device.id)),
