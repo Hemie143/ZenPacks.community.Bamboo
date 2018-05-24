@@ -85,14 +85,35 @@ class ActiveMQQueue(PythonDataSourcePlugin):
     def onSuccess(self, result, config):
         log.debug('Success - result is {}'.format(result))
 
+        data = self.new_data()
         ds_data = {}
         for success, ddata in result:
             if success:
                 ds = ddata[0]
                 metrics = json.loads(ddata[1])
                 ds_data[ds] = metrics
+            else:
+                data['events'].append({
+                    'device': config.id,
+                    'severity': 3,
+                    'eventKey': 'AMQQueue',
+                    'eventClassKey': 'AMQQueue',
+                    'summary': 'AMQQueue - Collection failed',
+                    'message': '{}'.format(ddata.value),
+                    'eventClass': '/Status/Jolokia',
+                })
+                return data
 
-        data = self.new_data()
+        data['events'].append({
+            'device': config.id,
+            'severity': 0,
+            'eventKey': 'AMQQueue',
+            'eventClassKey': 'AMQQueue',
+            'summary': 'AMQQueue - Collection OK',
+            'message': '',
+            'eventClass': '/Status/Jolokia',
+        })
+
         for datasource in config.datasources:
             if 'queue' not in ds_data:
                 continue

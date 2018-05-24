@@ -8,6 +8,9 @@ from twisted.web.client import getPage
 # Zenoss Imports
 from Products.DataCollector.plugins.CollectorPlugin import PythonPlugin
 from Products.DataCollector.plugins.DataMaps import ObjectMap, RelationshipMap
+from Products.ZenCollector.interfaces import IEventService
+from Products.ZenEvents import ZenEventClasses
+import zope.component
 
 import base64
 
@@ -16,6 +19,8 @@ class ActiveMQ(PythonPlugin):
     """
     Doc about this plugin
     """
+
+    _eventService = zope.component.queryUtility(IEventService)
 
     requiredProperties = (
         'zJolokiaPort',
@@ -70,8 +75,27 @@ class ActiveMQ(PythonPlugin):
         for success, result in results:
             if not success:
                 log.error('{}: {}'.format(device.id, result.getErrorMessage()))
+                self._eventService.sendEvent(dict(
+                    summary='Modeler plugin community.json.ActiveMQ returned no results.',
+                    message=result.getErrorMessage(),
+                    eventClass='/Status',
+                    eventClassKey='ActiveMQ_ConnectionError',
+                    device=device.id,
+                    eventKey='|'.join(('ActiveMQPlugin', device.id)),
+                    severity=ZenEventClasses.Error,
+                    ))
                 returnValue(None)
 
+        log.debug('ActiveMQ collect results: {}'.format(results))
+        self._eventService.sendEvent(dict(
+            summary='Modeler plugin community.json.ActiveMQ successful.',
+            message='',
+            eventClass='/Status',
+            eventClassKey='ActiveMQ_ConnectionOK',
+            device=device.id,
+            eventKey='|'.join(('ActiveMQPlugin', device.id)),
+            severity=ZenEventClasses.Clear,
+        ))
         returnValue(results)
 
     def process(self, device, results, log):

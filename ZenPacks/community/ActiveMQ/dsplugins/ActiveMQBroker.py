@@ -81,14 +81,35 @@ class ActiveMQBroker(PythonDataSourcePlugin):
     def onSuccess(self, result, config):
         log.debug('Success - result is {}'.format(result))
 
+        data = self.new_data()
         ds_data = {}
         for success, ddata in result:
             if success:
                 ds = ddata[0]
                 metrics = json.loads(ddata[1])
                 ds_data[ds] = metrics
+            else:
+                data['events'].append({
+                    'device': config.id,
+                    'severity': 3,
+                    'eventKey': 'AMQBroker',
+                    'eventClassKey': 'AMQBroker',
+                    'summary': 'AMQBroker - Collection failed',
+                    'message': '{}'.format(ddata.value),
+                    'eventClass': '/Status/Jolokia',
+                })
+                return data
 
-        data = self.new_data()
+        data['events'].append({
+            'device': config.id,
+            'severity': 0,
+            'eventKey': 'AMQBroker',
+            'eventClassKey': 'AMQBroker',
+            'summary': 'AMQBroker - Collection OK',
+            'message': '',
+            'eventClass': '/Status/Jolokia',
+        })
+
         for datasource in config.datasources:
             component = prepId(datasource.component)
             log.debug('component: {}/{}'.format(config.id, component))

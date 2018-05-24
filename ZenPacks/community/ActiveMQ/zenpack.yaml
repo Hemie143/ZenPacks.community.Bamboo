@@ -364,3 +364,8 @@ device_classes:
                 dpName: queue_averageMessageSize
               Max Message Size:
                 dpName: queue_maxMessageSize
+
+event_classes:
+  /Status/Jolokia:
+    remove: false
+    description: Jolokia event class
