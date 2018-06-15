@@ -131,7 +131,7 @@ class ActiveMQBroker(PythonDataSourcePlugin):
                     'eventClassKey': 'AMQBrokerHealth',
                     'summary': 'Broker "{}" - Status is OK'.format(component),
                     'message': broker_health,
-                    'eventClass': '/Status/AMQ/Broker',
+                    'eventClass': '/Status/ActiveMQ/Broker',
                     'amqHealth': broker_health
                 })
             else:
@@ -144,7 +144,7 @@ class ActiveMQBroker(PythonDataSourcePlugin):
                     'eventClassKey': 'AMQBrokerHealth',
                     'summary': 'Broker "{}" - Status failure'.format(component),
                     'message': broker_health,
-                    'eventClass': '/Status/AMQ/Broker',
+                    'eventClass': '/Status/ActiveMQ/Broker',
                     'amqHealth': broker_health
                 })
         log.debug('ActiveMQBroker onSuccess data: {}'.format(data))

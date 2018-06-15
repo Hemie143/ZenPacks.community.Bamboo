@@ -303,6 +303,20 @@ device_classes:
                   RRA:LAST:0.5:6:600
                   RRA:LAST:0.5:24:600
                   RRA:LAST:0.5:288:600'
+              queueSizeDelta:
+                rrdtype: DERIVE
+                rrdmin: 0
+                createCmd: 'RRA:AVERAGE:0.5:1:600
+                  RRA:AVERAGE:0.5:6:600
+                  RRA:AVERAGE:0.5:24:600
+                  RRA:AVERAGE:0.5:288:600
+                  RRA:MAX:0.5:6:600
+                  RRA:MAX:0.5:24:600
+                  RRA:MAX:0.5:288:600
+                  RRA:LAST:0.5:1:600
+                  RRA:LAST:0.5:6:600
+                  RRA:LAST:0.5:24:600
+                  RRA:LAST:0.5:288:600'
               averageMessageSize:
                 rrdtype: GAUGE
                 createCmd: 'RRA:AVERAGE:0.5:1:600
@@ -329,6 +343,12 @@ device_classes:
                   RRA:LAST:0.5:6:600
                   RRA:LAST:0.5:24:600
                   RRA:LAST:0.5:288:600'
+        thresholds:
+          DLQMessages:
+            dsnames: [queue_queueSizeDelta]
+            eventClass: /Status/ActiveMQ/DLQ
+            severity: 4
+            maxval: 0
         graphs:
           Messages:
             units: messages
@@ -369,3 +389,13 @@ event_classes:
   /Status/Jolokia:
     remove: false
     description: Jolokia event class
+  /Status/ActiveMQ:
+    remove: false
+    description: ActiveMQ event class
+  /Status/ActiveMQ/DLQ:
+    remove: false
+    description: ActiveMQ event class
+  /Status/ActiveMQ/Broker:
+    remove: false
+    description: ActiveMQ event class
+

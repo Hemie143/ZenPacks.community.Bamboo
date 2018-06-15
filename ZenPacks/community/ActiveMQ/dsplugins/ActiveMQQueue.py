@@ -126,6 +126,7 @@ class ActiveMQQueue(PythonDataSourcePlugin):
             data['values'][component]['dequeueCount'] = values['DequeueCount']
             data['values'][component]['expiredCount'] = values['ExpiredCount']
             data['values'][component]['queueSize'] = values['QueueSize']
+            data['values'][component]['queueSizeDelta'] = values['QueueSize']
             data['values'][component]['averageMessageSize'] = values['AverageMessageSize']
             data['values'][component]['maxMessageSize'] = values['MaxMessageSize']
         log.debug('ActiveMQQueue onSuccess data: {}'.format(data))
