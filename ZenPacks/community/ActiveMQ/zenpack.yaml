@@ -63,6 +63,9 @@ classes:
       objectName:
         label: ObjectName
         grid_display: false
+      queueSize:
+        datapoint: queue_queueSize
+        grid_display: true
     monitoring_templates: [ActiveMQQueueDLQ]
 
 device_classes:
@@ -304,7 +307,7 @@ device_classes:
                   RRA:LAST:0.5:24:600
                   RRA:LAST:0.5:288:600'
               queueSizeDelta:
-                rrdtype: DERIVE
+                rrdtype: GAUGE
                 rrdmin: 0
                 createCmd: 'RRA:AVERAGE:0.5:1:600
                   RRA:AVERAGE:0.5:6:600
@@ -357,8 +360,10 @@ device_classes:
             graphpoints:
               Consumer Count:
                 dpName: queue_consumerCount
+                cFunc: LAST
               Expired Count:
                 dpName: queue_expiredCount
+                cFunc: LAST
           Queue:
             units: messages
             width: 1000
@@ -366,6 +371,13 @@ device_classes:
             graphpoints:
               Queue Size:
                 dpName: queue_queueSize
+                sequence: 1
+                cFunc: LAST
+              Queue Size Delta:
+                dpName: queue_queueSizeDelta
+                lineType: AREA
+                sequence: 2
+                cFunc: LAST
           Flow:
             units: messages
             width: 1000
@@ -373,8 +385,10 @@ device_classes:
             graphpoints:
               Enqueue Count:
                 dpName: queue_enqueueCount
+                cFunc: LAST
               Dequeue Count:
                 dpName: queue_dequeueCount
+                cFunc: LAST
           Message size:
             units: bytes
             width: 1000
@@ -382,8 +396,10 @@ device_classes:
             graphpoints:
               Average Message Size:
                 dpName: queue_averageMessageSize
+                cFunc: LAST
               Max Message Size:
                 dpName: queue_maxMessageSize
+                cFunc: LAST
 
 event_classes:
   /Status/Jolokia:

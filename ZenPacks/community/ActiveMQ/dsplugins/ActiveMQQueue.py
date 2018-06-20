@@ -47,13 +47,17 @@ class ActiveMQQueue(PythonDataSourcePlugin):
 
     @classmethod
     def params(cls, datasource, context):
-        log.debug('Starting AMQDevice params')
-        params = {'objectName': context.objectName}
+        # TODO log.debug
+        log.debug('Starting AMQQueue params')
+        params = {}
+        params['objectName'] = context.objectName
+        if hasattr(context, 'queueSize'):
+            params['queueSize'] = context.queueSize()
         log.debug('params is {}'.format(params))
         return params
 
     def collect(self, config):
-        log.debug('Starting ActiveMQ Broker collect')
+        log.debug('Starting AMQQueue collect')
 
         ip_address = config.manageIp
         if not ip_address:
@@ -118,17 +122,31 @@ class ActiveMQQueue(PythonDataSourcePlugin):
             if 'queue' not in ds_data:
                 continue
             component = prepId(datasource.component)
-            log.debug('component: {}/{}'.format(config.id, component))
             values = ds_data['queue']['value']
-            log.debug('values: {}'.format(values))
             data['values'][component]['consumerCount'] = values['ConsumerCount']
             data['values'][component]['enqueueCount'] = values['EnqueueCount']
             data['values'][component]['dequeueCount'] = values['DequeueCount']
             data['values'][component]['expiredCount'] = values['ExpiredCount']
-            data['values'][component]['queueSize'] = values['QueueSize']
-            data['values'][component]['queueSizeDelta'] = values['QueueSize']
             data['values'][component]['averageMessageSize'] = values['AverageMessageSize']
             data['values'][component]['maxMessageSize'] = values['MaxMessageSize']
+
+            queueSize = values['QueueSize']
+            if datasource.template == 'ActiveMQQueueDLQ':
+                queueSize_prev = datasource.params.get('queueSize', queueSize)
+                data['values'][component]['queueSizeDelta'] = queueSize - queueSize_prev
+                if queueSize - queueSize_prev > 0:
+                    data['events'].append({
+                        'device': config.id,
+                        'component': component,
+                        'severity': 3,
+                        'eventKey': 'AMQQueueDLQ',
+                        'eventClassKey': 'AMQQueueDLQ',
+                        'summary': 'There is a new message in the DLQ {}'.format(component),
+                        'message': 'There is a new message in the DLQ {}'.format(component),
+                        'eventClass': '/Status/ActiveMQ/DLQ',
+                    })
+            data['values'][component]['queueSize'] = queueSize
+
         log.debug('ActiveMQQueue onSuccess data: {}'.format(data))
         return data
 

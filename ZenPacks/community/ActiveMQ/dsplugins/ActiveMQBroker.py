@@ -112,7 +112,6 @@ class ActiveMQBroker(PythonDataSourcePlugin):
 
         for datasource in config.datasources:
             component = prepId(datasource.component)
-            log.debug('component: {}/{}'.format(config.id, component))
             if 'brokerhealth' not in ds_data:
                 continue
             broker_health = ds_data['brokerhealth']['value']
@@ -120,7 +119,6 @@ class ActiveMQBroker(PythonDataSourcePlugin):
                 continue
             uptimemillis = ds_data['broker']['value']
             data['values'][component]['uptime'] = uptimemillis / 1000 / 60
-            log.debug('uptime: {}'.format(uptimemillis))
             if broker_health.startswith('Good'):
                 data['values'][component]['health'] = 0
                 data['events'].append({
