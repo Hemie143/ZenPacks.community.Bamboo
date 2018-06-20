@@ -73,6 +73,15 @@ device_classes:
     zProperties:
       zPythonClass: ZenPacks.community.ActiveMQ.ActiveMQDevice
       zCollectorPlugins:
+        - zenoss.snmp.NewDeviceMap
+        - zenoss.snmp.DeviceMap
+        - zenoss.snmp.InterfaceMap
+        - zenoss.snmp.RouteMap
+        - zenoss.snmp.IpServiceMap
+        - zenoss.snmp.HRFileSystemMap
+        - zenoss.snmp.HRSWRunMap
+        - zenoss.snmp.CpuMap
+        - zenoss.snmp.SnmpV3EngineIdMap
         - community.json.ActiveMQ
       zDeviceTemplates:
         - Device
