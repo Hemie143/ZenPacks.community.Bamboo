@@ -66,6 +66,10 @@ classes:
       queueSize:
         datapoint: queue_queueSize
         grid_display: true
+      get_queueSize:
+        grid_display: false
+        api_only: true
+        api_backendtype: method
     monitoring_templates: [ActiveMQQueueDLQ]
 
 device_classes:

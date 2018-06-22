@@ -52,7 +52,13 @@ class ActiveMQQueue(PythonDataSourcePlugin):
         params = {}
         params['objectName'] = context.objectName
         if hasattr(context, 'queueSize'):
-            params['queueSize'] = context.queueSize()
+            # First method based on property, but shouldn't update as quickly as the others
+            # queueSize = context.queueSize()
+            # Second method, based on getRRDValue, therefore reading the RRD file (slower, normally)
+            # queueSize = context.getRRDValue('queue_queueSize', cf="LAST")
+            # Third method, fetching the latest value from the cache, but it's not refreshing as fast as expected
+            queueSize = context.cacheRRDValue('queue_queueSize')
+            params['queueSize'] = queueSize
         log.debug('params is {}'.format(params))
         return params
 
@@ -72,7 +78,6 @@ class ActiveMQQueue(PythonDataSourcePlugin):
             # log.debug('ActiveMQ Broker url: {}'.format(url))
             basic_auth = base64.encodestring('{}:{}'.format(datasource.zJolokiaUsername, datasource.zJolokiaPassword))
             auth_header = "Basic " + basic_auth.strip()
-            # log.debug('ActiveMQ Broker auth_header: {}'.format(auth_header))
             d = sem.run(getPage, url,
                         headers={
                             "Accept": "application/json",
@@ -130,19 +135,22 @@ class ActiveMQQueue(PythonDataSourcePlugin):
             data['values'][component]['averageMessageSize'] = values['AverageMessageSize']
             data['values'][component]['maxMessageSize'] = values['MaxMessageSize']
 
-            queueSize = values['QueueSize']
+            queueSize = float(values['QueueSize'])
             if datasource.template == 'ActiveMQQueueDLQ':
-                queueSize_prev = datasource.params.get('queueSize', queueSize)
-                data['values'][component]['queueSizeDelta'] = queueSize - queueSize_prev
-                if queueSize - queueSize_prev > 0:
+                queueSize_prev = float(datasource.params.get('queueSize', queueSize))
+                log.debug(
+                    'DLQ QueueSize {}/{}: Size:{} - Prev:{}'.format(config.id, component, queueSize, queueSize_prev))
+                queueSizeDelta = queueSize - queueSize_prev
+                data['values'][component]['queueSizeDelta'] = queueSizeDelta
+                if queueSizeDelta > 0:
                     data['events'].append({
                         'device': config.id,
                         'component': component,
                         'severity': 3,
-                        'eventKey': 'AMQQueueDLQ',
+                        'eventKey': 'AMQQueueDLQ_{}'.format(queueSize),
                         'eventClassKey': 'AMQQueueDLQ',
                         'summary': 'There is a new message in the DLQ {}'.format(component),
-                        'message': 'There is a new message in the DLQ {}'.format(component),
+                        'message': 'There is a new message in the DLQ {}\r\nTotal number of messages: {}'.format(component, queueSize),
                         'eventClass': '/Status/ActiveMQ/DLQ',
                     })
             data['values'][component]['queueSize'] = queueSize
