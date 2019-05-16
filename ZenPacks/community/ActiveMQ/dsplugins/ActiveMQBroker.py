@@ -81,7 +81,9 @@ class ActiveMQBroker(PythonDataSourcePlugin):
     def onSuccess(self, result, config):
         log.debug('Success - result is {}'.format(result))
 
+        # TODO: Move following block under next loop, in case of multiple brokers
         data = self.new_data()
+        broker_name = config.datasources[0].component
         ds_data = {}
         for success, ddata in result:
             if success:
@@ -91,6 +93,7 @@ class ActiveMQBroker(PythonDataSourcePlugin):
             else:
                 data['events'].append({
                     'device': config.id,
+                    'component': broker_name,
                     'severity': 3,
                     'eventKey': 'AMQBroker',
                     'eventClassKey': 'AMQBroker',
@@ -102,6 +105,7 @@ class ActiveMQBroker(PythonDataSourcePlugin):
 
         data['events'].append({
             'device': config.id,
+            'component': broker_name,
             'severity': 0,
             'eventKey': 'AMQBroker',
             'eventClassKey': 'AMQBroker',
