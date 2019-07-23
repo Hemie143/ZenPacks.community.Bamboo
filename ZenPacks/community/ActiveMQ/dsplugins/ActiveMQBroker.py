@@ -30,7 +30,7 @@ class ActiveMQBroker(PythonDataSourcePlugin):
     # TODO: jolokia query should just get HTTP code back
     # TODO: process jolokia in separate module to run once per host ???
     urls = {
-        'jolokia': 'http://{}:{}',
+        'jolokia': 'http://{}:{}/',
         'brokerhealth': 'http://{}:{}/api/jolokia/read/{},service=Health/CurrentStatus',
         'broker': 'http://{}:{}/api/jolokia/read/{}/UptimeMillis,StorePercentUsage,TempPercentUsage,CurrentConnectionsCount,MemoryPercentUsage',
     }
@@ -95,7 +95,7 @@ class ActiveMQBroker(PythonDataSourcePlugin):
         return DeferredList(deferreds)
 
     def onSuccess(self, result, config):
-        log.debug('AAASuccess - result is {}'.format(result))
+        log.debug('Success - result is {}'.format(result))
 
         # TODO: Move following block under next loop, in case of multiple brokers
         data = self.new_data()
@@ -103,7 +103,7 @@ class ActiveMQBroker(PythonDataSourcePlugin):
         ds_data = {}
 
         # Check that all data has been received correctly
-        if all([not s for s, d in result]):
+        if any([not s for s, d in result]):
             data['events'].append({
                 'device': config.id,
                 'component': broker_name,
@@ -150,7 +150,6 @@ class ActiveMQBroker(PythonDataSourcePlugin):
             'eventClass': '/Status/Jolokia',
         })
 
-        log.debug('AAA - ds_data is {}'.format(ds_data))
         # Generate metrics data per datasource
         for datasource in config.datasources:
             component = prepId(datasource.component)

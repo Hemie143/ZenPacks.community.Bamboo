@@ -30,7 +30,7 @@ class ActiveMQQueue(PythonDataSourcePlugin):
     )
 
     urls = {
-        'jolokia': 'http://{}:{}',
+        'jolokia': 'http://{}:{}/',
         'broker': 'http://{}:{}/api/jolokia/read/{},service=Health/CurrentStatus',
         'queue': 'http://{}:{}/api/jolokia/read/{}/ConsumerCount,DequeueCount,EnqueueCount,ExpiredCount,QueueSize,AverageMessageSize,MaxMessageSize',
         }
@@ -118,7 +118,7 @@ class ActiveMQQueue(PythonDataSourcePlugin):
         queue_name = config.datasources[0].component
         ds_data = {}
 
-        if all([not s for s, d in result]):
+        if any([not s for s, d in result]):
             broker_name = config.datasources[0].params['brokerName']
             # datasource.params.get('queueSize', queueSize)
             data['events'].append({
