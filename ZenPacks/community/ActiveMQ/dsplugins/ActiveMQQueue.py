@@ -4,9 +4,14 @@ import json
 import logging
 import base64
 
+from random import randint
+
 # Twisted Imports
 from twisted.internet.defer import returnValue, DeferredSemaphore, DeferredList
 from twisted.web.client import getPage
+from twisted.internet import reactor
+from twisted.internet.protocol import Protocol
+from twisted.internet.endpoints import TCP4ClientEndpoint, connectProtocol
 
 # Zenoss imports
 from ZenPacks.zenoss.PythonCollector.datasources.PythonDataSource import PythonDataSourcePlugin
@@ -25,6 +30,7 @@ class ActiveMQQueue(PythonDataSourcePlugin):
     )
 
     urls = {
+        'jolokia': 'http://{}:{}',
         'broker': 'http://{}:{}/api/jolokia/read/{},service=Health/CurrentStatus',
         'queue': 'http://{}:{}/api/jolokia/read/{}/ConsumerCount,DequeueCount,EnqueueCount,ExpiredCount,QueueSize,AverageMessageSize,MaxMessageSize',
         }
@@ -51,6 +57,7 @@ class ActiveMQQueue(PythonDataSourcePlugin):
         log.debug('Starting AMQQueue params')
         params = {}
         params['objectName'] = context.objectName
+        params['brokerName'] = context.brokerName
         if hasattr(context, 'queueSize'):
             # First method based on property, but shouldn't update as quickly as the others
             # queueSize = context.queueSize()
@@ -72,6 +79,15 @@ class ActiveMQQueue(PythonDataSourcePlugin):
 
         deferreds = []
         sem = DeferredSemaphore(1)
+
+        '''
+        ds0 = config.datasources[0]
+        point = TCP4ClientEndpoint(reactor, ip_address, ds0.zJolokiaPort)
+        d = connectProtocol(point, Protocol())
+        d.addCallback(self.add_tag, 'JolokiaPort')
+        deferreds.append(d)
+        '''
+
         for datasource in config.datasources:
             object_name = datasource.params['objectName']
             url = self.urls[datasource.datasource].format(ip_address, datasource.zJolokiaPort, object_name)
@@ -94,16 +110,42 @@ class ActiveMQQueue(PythonDataSourcePlugin):
     def onSuccess(self, result, config):
         log.debug('Success - result is {}'.format(result))
 
+        ds0 = config.datasources[0]
+        log.debug('config: {}'.format(ds0.__dict__))
+
+        # TODO: Move following block under next loop, in case of multiple brokers
         data = self.new_data()
+        queue_name = config.datasources[0].component
         ds_data = {}
+
+        if all([not s for s, d in result]):
+            broker_name = config.datasources[0].params['brokerName']
+            # datasource.params.get('queueSize', queueSize)
+            data['events'].append({
+                'device': config.id,
+                'component': broker_name,
+                'severity': 3,
+                'eventKey': 'AMQBroker',
+                'eventClassKey': 'AMQBroker',
+                'summary': 'Connection to AMQ/Jolokia failed',
+                'message': '{}'.format(d),
+                'eventClass': '/Status/Jolokia',
+            })
+            return data
+
         for success, ddata in result:
             if success:
                 ds = ddata[0]
-                metrics = json.loads(ddata[1])
-                ds_data[ds] = metrics
+                if ds == 'jolokia':
+                    # Data is not in JSON format
+                    ds_data[ds] = 'test'
+                else:
+                    metrics = json.loads(ddata[1])
+                    ds_data[ds] = metrics
             else:
                 data['events'].append({
                     'device': config.id,
+                    'component': queue_name,
                     'severity': 3,
                     'eventKey': 'AMQQueue',
                     'eventClassKey': 'AMQQueue',
@@ -115,11 +157,12 @@ class ActiveMQQueue(PythonDataSourcePlugin):
 
         data['events'].append({
             'device': config.id,
+            'component': queue_name,
             'severity': 0,
             'eventKey': 'AMQQueue',
             'eventClassKey': 'AMQQueue',
             'summary': 'AMQQueue - Collection OK',
-            'message': '',
+            'message': 'AMQQueue - Collection OK',
             'eventClass': '/Status/Jolokia',
         })
 
@@ -137,7 +180,11 @@ class ActiveMQQueue(PythonDataSourcePlugin):
 
             queueSize = float(values['QueueSize'])
             if datasource.template == 'ActiveMQQueueDLQ':
-                queueSize_prev = float(datasource.params.get('queueSize', queueSize))
+                queueSize_prev = datasource.params.get('queueSize', queueSize)
+                if queueSize_prev == 'Unknown':
+                    queueSize_prev = queueSize
+                else:
+                    queueSize_prev = float(queueSize_prev)
                 log.debug(
                     'DLQ QueueSize {}/{}: Size:{} - Prev:{}'.format(config.id, component, queueSize, queueSize_prev))
                 queueSizeDelta = queueSize - queueSize_prev
@@ -151,6 +198,17 @@ class ActiveMQQueue(PythonDataSourcePlugin):
                         'eventClassKey': 'AMQQueueDLQ',
                         'summary': 'There is a new message in the DLQ {}'.format(component),
                         'message': 'There is a new message in the DLQ {}\r\nTotal number of messages: {}'.format(component, queueSize),
+                        'eventClass': '/Status/ActiveMQ/DLQ',
+                    })
+                else:
+                    data['events'].append({
+                        'device': config.id,
+                        'component': component,
+                        'severity': 0,
+                        'eventKey': 'AMQQueueDLQ_{}'.format(queueSize),
+                        'eventClassKey': 'AMQQueueDLQ',
+                        'summary': 'There is no new message in the DLQ {}'.format(component),
+                        'message': 'There is no new message in the DLQ {}\r\nTotal number of messages: {}'.format(component, queueSize),
                         'eventClass': '/Status/ActiveMQ/DLQ',
                     })
             data['values'][component]['queueSize'] = queueSize

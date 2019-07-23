@@ -74,10 +74,11 @@ class ActiveMQ(PythonPlugin):
         results = yield DeferredList(deferreds, consumeErrors=True)
         for success, result in results:
             if not success:
-                log.error('{}: {}'.format(device.id, result.getErrorMessage()))
+                errorMessage = result.getErrorMessage()
+                log.error('{}: {}'.format(device.id, errorMessage))
                 self._eventService.sendEvent(dict(
                     summary='Modeler plugin community.json.ActiveMQ returned no results.',
-                    message=result.getErrorMessage(),
+                    message=errorMessage,
                     eventClass='/Status/Jolokia',
                     eventClassKey='ActiveMQ_ConnectionError',
                     device=device.id,
@@ -148,6 +149,7 @@ class ActiveMQ(PythonPlugin):
             queues = brokerAttr.get('Queues')
             for _, queue in [(_, queue) for q in queues for (_, queue) in q.items()]:
                 # TODO: What if queue with same name in different broker ?
+                # TODO: create queue id with broker id included
                 queue_data = queues_data.get(queue, '')
                 if queue_data:
                     om_queue = ObjectMap()
@@ -155,6 +157,7 @@ class ActiveMQ(PythonPlugin):
                     om_queue.id = self.prepId(queue_name)
                     om_queue.title = queue_name
                     om_queue.objectName = queue
+                    om_queue.brokerName = broker_name
 
                     # DLQ detection based on attribute
                     # queue_dlq = queue_data['DLQ']

@@ -38,6 +38,7 @@ classes:
         label: Version
         grid_display: true
       status:
+        # TODO: Correct display, nothing is shown
         label: Status
         type: string
         datapoint: broker_health
@@ -54,6 +55,9 @@ classes:
       objectName:
         label: ObjectName
         grid_display: false
+      brokerName:
+        label: BrokerName
+        grid_display: false
     monitoring_templates: [ActiveMQQueue]
 
   ActiveMQQueueDLQ:
@@ -63,16 +67,21 @@ classes:
       objectName:
         label: ObjectName
         grid_display: false
+      brokerName:
+        label: BrokerName
+        grid_display: false
       queueSize:
         datapoint: queue_queueSize
         grid_display: true
       get_queueSize:
+        # TODO: Bug: Attribute Key Error
         grid_display: false
         api_only: true
         api_backendtype: method
     monitoring_templates: [ActiveMQQueueDLQ]
 
 device_classes:
+  # TODO : Merge all under /Server
   /Server/Linux/ActiveMQ:
     zProperties:
       zPythonClass: ZenPacks.community.ActiveMQ.ActiveMQDevice
@@ -94,6 +103,11 @@ device_classes:
       ActiveMQBroker:
         targetPythonClass: ZenPacks.community.ActiveMQ.ActiveMQBroker
         datasources:
+          jolokia:
+            type: Python
+            plugin_classname: ZenPacks.community.ActiveMQ.dsplugins.ActiveMQBroker.ActiveMQBroker
+            datapoints:
+              jolokia: GAUGE
           brokerhealth:
             type: Python
             plugin_classname: ZenPacks.community.ActiveMQ.dsplugins.ActiveMQBroker.ActiveMQBroker
@@ -104,6 +118,31 @@ device_classes:
             plugin_classname: ZenPacks.community.ActiveMQ.dsplugins.ActiveMQBroker.ActiveMQBroker
             datapoints:
               uptime: GAUGE
+              memoryusage: GAUGE
+              storeusage: GAUGE
+              tempusage: GAUGE
+              currentconnections: GAUGE
+        thresholds:
+          memory75:
+            dsnames: [broker_memoryusage]
+            eventClass: /Status/ActiveMQ/Broker
+            severity: 3
+            maxval: 75
+          memory90:
+            dsnames: [broker_memoryusage]
+            eventClass: /Status/ActiveMQ/Broker
+            severity: 4
+            maxval: 90
+          storage75:
+            dsnames: [broker_storeusage]
+            eventClass: /Status/ActiveMQ/Broker
+            severity: 3
+            maxval: 75
+          storage90:
+            dsnames: [broker_storeusage]
+            eventClass: /Status/ActiveMQ/Broker
+            severity: 4
+            maxval: 90
         graphs:
           Uptime:
             units: minutes
@@ -112,10 +151,37 @@ device_classes:
             graphpoints:
               Uptime:
                 dpName: broker_uptime
+                sequence: 1
+          Usage:
+            units: percent
+            miny: 0
+            maxy: 100
+            graphpoints:
+              Memory Percent Usage:
+                dpName: broker_memoryusage
+                sequence: 1
+              Store Percent Usage:
+                dpName: broker_storeusage
+                sequence: 2
+              Temp Percent Usage:
+                dpName: broker_tempusage
+                sequence: 3
+          Connections:
+            units: connections
+            miny: 0
+            graphpoints:
+              Current Connections:
+                dpName: broker_currentconnections
+                sequence: 1
 
       ActiveMQQueue:
         targetPythonClass: ZenPacks.community.ActiveMQ.ActiveMQQueue
         datasources:
+          jolokia:
+            type: Python
+            plugin_classname: ZenPacks.community.ActiveMQ.dsplugins.ActiveMQQueue.ActiveMQQueue
+            datapoints:
+              jolokia: GAUGE
           queue:
             type: Python
             plugin_classname: ZenPacks.community.ActiveMQ.dsplugins.ActiveMQQueue.ActiveMQQueue
@@ -219,8 +285,10 @@ device_classes:
             graphpoints:
               Consumer Count:
                 dpName: queue_consumerCount
+                sequence: 1
               Expired Count:
                 dpName: queue_expiredCount
+                sequence: 2
           Queue:
             units: messages
             width: 1000
@@ -228,6 +296,7 @@ device_classes:
             graphpoints:
               Queue Size:
                 dpName: queue_queueSize
+                sequence: 1
           Flow:
             units: messages
             width: 1000
@@ -235,8 +304,10 @@ device_classes:
             graphpoints:
               Enqueue Count:
                 dpName: queue_enqueueCount
+                sequence: 1
               Dequeue Count:
                 dpName: queue_dequeueCount
+                sequence: 2
           Message size:
             units: bytes
             width: 1000
@@ -244,12 +315,19 @@ device_classes:
             graphpoints:
               Average Message Size:
                 dpName: queue_averageMessageSize
+                sequence: 1
               Max Message Size:
                 dpName: queue_maxMessageSize
+                sequence: 2
 
       ActiveMQQueueDLQ:
         targetPythonClass: ZenPacks.community.ActiveMQ.ActiveMQQueueDLQ
         datasources:
+          jolokia:
+            type: Python
+            plugin_classname: ZenPacks.community.ActiveMQ.dsplugins.ActiveMQQueue.ActiveMQQueue
+            datapoints:
+              jolokia: GAUGE
           queue:
             type: Python
             plugin_classname: ZenPacks.community.ActiveMQ.dsplugins.ActiveMQQueue.ActiveMQQueue
@@ -361,10 +439,10 @@ device_classes:
                   RRA:LAST:0.5:288:600'
         thresholds:
           DLQMessages:
-            dsnames: [queue_queueSizeDelta]
+            dsnames: [queue_queueSizeDelta, queue_queueSize]
             eventClass: /Status/ActiveMQ/DLQ
             severity: 4
-            maxval: 0
+            maxval: '0.1'
         graphs:
           Messages:
             units: messages
@@ -373,10 +451,10 @@ device_classes:
             graphpoints:
               Consumer Count:
                 dpName: queue_consumerCount
-                cFunc: LAST
+                sequence: 1
               Expired Count:
                 dpName: queue_expiredCount
-                cFunc: LAST
+                sequence: 2
           Queue:
             units: messages
             width: 1000
@@ -385,12 +463,10 @@ device_classes:
               Queue Size:
                 dpName: queue_queueSize
                 sequence: 1
-                cFunc: LAST
               Queue Size Delta:
                 dpName: queue_queueSizeDelta
                 lineType: AREA
                 sequence: 2
-                cFunc: LAST
           Flow:
             units: messages
             width: 1000
@@ -398,10 +474,10 @@ device_classes:
             graphpoints:
               Enqueue Count:
                 dpName: queue_enqueueCount
-                cFunc: LAST
+                sequence: 1
               Dequeue Count:
                 dpName: queue_dequeueCount
-                cFunc: LAST
+                sequence: 2
           Message size:
             units: bytes
             width: 1000
@@ -409,10 +485,420 @@ device_classes:
             graphpoints:
               Average Message Size:
                 dpName: queue_averageMessageSize
-                cFunc: LAST
+                sequence: 1
               Max Message Size:
                 dpName: queue_maxMessageSize
-                cFunc: LAST
+                sequence: 2
+
+  /Server/SSH/Linux/ActiveMQ:
+    zProperties:
+      zPythonClass: ZenPacks.community.ActiveMQ.ActiveMQDevice
+      zCollectorPlugins:
+        - zenoss.cmd.uname
+        - zenoss.cmd.linux.df
+        - zenoss.cmd.linux.cpuinfo
+        - zenoss.cmd.linux.interfaces
+        - zenoss.cmd.linux.lvm
+        - zenoss.cmd.linux.memory
+        - zenoss.cmd.linux.netstat_an
+        - zenoss.cmd.linux.netstat_rn
+        - zenoss.cmd.linux.process
+        - zenoss.cmd.linux.sudo_dmidecode
+        - zenoss.cmd.linux.os_release
+        - zenoss.cmd.linux.os_service
+        - community.json.ActiveMQ
+      zDeviceTemplates:
+        - Device
+
+    templates:
+      ActiveMQBroker:
+        targetPythonClass: ZenPacks.community.ActiveMQ.ActiveMQBroker
+        datasources:
+          jolokia:
+            type: Python
+            plugin_classname: ZenPacks.community.ActiveMQ.dsplugins.ActiveMQBroker.ActiveMQBroker
+            datapoints:
+              jolokia: GAUGE
+          brokerhealth:
+            type: Python
+            plugin_classname: ZenPacks.community.ActiveMQ.dsplugins.ActiveMQBroker.ActiveMQBroker
+            datapoints:
+              health: GAUGE
+          broker:
+            type: Python
+            plugin_classname: ZenPacks.community.ActiveMQ.dsplugins.ActiveMQBroker.ActiveMQBroker
+            datapoints:
+              uptime: GAUGE
+              memoryusage: GAUGE
+              storeusage: GAUGE
+              tempusage: GAUGE
+              currentconnections: GAUGE
+        thresholds:
+          memory75:
+            dsnames: [broker_memoryusage]
+            eventClass: /Status/ActiveMQ/Broker
+            severity: 3
+            maxval: 75
+          memory90:
+            dsnames: [broker_memoryusage]
+            eventClass: /Status/ActiveMQ/Broker
+            severity: 4
+            maxval: 90
+          storage75:
+            dsnames: [broker_storeusage]
+            eventClass: /Status/ActiveMQ/Broker
+            severity: 3
+            maxval: 75
+          storage90:
+            dsnames: [broker_storeusage]
+            eventClass: /Status/ActiveMQ/Broker
+            severity: 4
+            maxval: 90
+        graphs:
+          Uptime:
+            units: minutes
+            width: 1000
+            miny: 0
+            graphpoints:
+              Uptime:
+                dpName: broker_uptime
+                sequence: 1
+          Usage:
+            units: percent
+            miny: 0
+            maxy: 100
+            graphpoints:
+              Memory Percent Usage:
+                dpName: broker_memoryusage
+                sequence: 1
+              Store Percent Usage:
+                dpName: broker_storeusage
+                sequence: 2
+              Temp Percent Usage:
+                dpName: broker_tempusage
+                sequence: 3
+          Connections:
+            units: connections
+            miny: 0
+            graphpoints:
+              Current Connections:
+                dpName: broker_currentconnections
+                sequence: 1
+
+      ActiveMQQueue:
+        targetPythonClass: ZenPacks.community.ActiveMQ.ActiveMQQueue
+        datasources:
+          jolokia:
+            type: Python
+            plugin_classname: ZenPacks.community.ActiveMQ.dsplugins.ActiveMQQueue.ActiveMQQueue
+            datapoints:
+              jolokia: GAUGE
+          queue:
+            type: Python
+            plugin_classname: ZenPacks.community.ActiveMQ.dsplugins.ActiveMQQueue.ActiveMQQueue
+            datapoints:
+              consumerCount:
+                rrdtype: GAUGE
+                createCmd: 'RRA:AVERAGE:0.5:1:600
+                  RRA:AVERAGE:0.5:6:600
+                  RRA:AVERAGE:0.5:24:600
+                  RRA:AVERAGE:0.5:288:600
+                  RRA:MAX:0.5:6:600
+                  RRA:MAX:0.5:24:600
+                  RRA:MAX:0.5:288:600
+                  RRA:LAST:0.5:1:600
+                  RRA:LAST:0.5:6:600
+                  RRA:LAST:0.5:24:600
+                  RRA:LAST:0.5:288:600'
+              enqueueCount:
+                rrdtype: GAUGE
+                createCmd: 'RRA:AVERAGE:0.5:1:600
+                  RRA:AVERAGE:0.5:6:600
+                  RRA:AVERAGE:0.5:24:600
+                  RRA:AVERAGE:0.5:288:600
+                  RRA:MAX:0.5:6:600
+                  RRA:MAX:0.5:24:600
+                  RRA:MAX:0.5:288:600
+                  RRA:LAST:0.5:1:600
+                  RRA:LAST:0.5:6:600
+                  RRA:LAST:0.5:24:600
+                  RRA:LAST:0.5:288:600'
+              dequeueCount:
+                rrdtype: GAUGE
+                createCmd: 'RRA:AVERAGE:0.5:1:600
+                  RRA:AVERAGE:0.5:6:600
+                  RRA:AVERAGE:0.5:24:600
+                  RRA:AVERAGE:0.5:288:600
+                  RRA:MAX:0.5:6:600
+                  RRA:MAX:0.5:24:600
+                  RRA:MAX:0.5:288:600
+                  RRA:LAST:0.5:1:600
+                  RRA:LAST:0.5:6:600
+                  RRA:LAST:0.5:24:600
+                  RRA:LAST:0.5:288:600'
+              expiredCount:
+                rrdtype: GAUGE
+                createCmd: 'RRA:AVERAGE:0.5:1:600
+                  RRA:AVERAGE:0.5:6:600
+                  RRA:AVERAGE:0.5:24:600
+                  RRA:AVERAGE:0.5:288:600
+                  RRA:MAX:0.5:6:600
+                  RRA:MAX:0.5:24:600
+                  RRA:MAX:0.5:288:600
+                  RRA:LAST:0.5:1:600
+                  RRA:LAST:0.5:6:600
+                  RRA:LAST:0.5:24:600
+                  RRA:LAST:0.5:288:600'
+              queueSize:
+                rrdtype: GAUGE
+                createCmd: 'RRA:AVERAGE:0.5:1:600
+                  RRA:AVERAGE:0.5:6:600
+                  RRA:AVERAGE:0.5:24:600
+                  RRA:AVERAGE:0.5:288:600
+                  RRA:MAX:0.5:6:600
+                  RRA:MAX:0.5:24:600
+                  RRA:MAX:0.5:288:600
+                  RRA:LAST:0.5:1:600
+                  RRA:LAST:0.5:6:600
+                  RRA:LAST:0.5:24:600
+                  RRA:LAST:0.5:288:600'
+              averageMessageSize:
+                rrdtype: GAUGE
+                createCmd: 'RRA:AVERAGE:0.5:1:600
+                  RRA:AVERAGE:0.5:6:600
+                  RRA:AVERAGE:0.5:24:600
+                  RRA:AVERAGE:0.5:288:600
+                  RRA:MAX:0.5:6:600
+                  RRA:MAX:0.5:24:600
+                  RRA:MAX:0.5:288:600
+                  RRA:LAST:0.5:1:600
+                  RRA:LAST:0.5:6:600
+                  RRA:LAST:0.5:24:600
+                  RRA:LAST:0.5:288:600'
+              maxMessageSize:
+                rrdtype: GAUGE
+                createCmd: 'RRA:AVERAGE:0.5:1:600
+                  RRA:AVERAGE:0.5:6:600
+                  RRA:AVERAGE:0.5:24:600
+                  RRA:AVERAGE:0.5:288:600
+                  RRA:MAX:0.5:6:600
+                  RRA:MAX:0.5:24:600
+                  RRA:MAX:0.5:288:600
+                  RRA:LAST:0.5:1:600
+                  RRA:LAST:0.5:6:600
+                  RRA:LAST:0.5:24:600
+                  RRA:LAST:0.5:288:600'
+        graphs:
+          Messages:
+            units: messages
+            width: 1000
+            miny: 0
+            graphpoints:
+              Consumer Count:
+                dpName: queue_consumerCount
+                sequence: 1
+              Expired Count:
+                dpName: queue_expiredCount
+                sequence: 2
+          Queue:
+            units: messages
+            width: 1000
+            miny: 0
+            graphpoints:
+              Queue Size:
+                dpName: queue_queueSize
+          Flow:
+            units: messages
+            width: 1000
+            miny: 0
+            graphpoints:
+              Enqueue Count:
+                dpName: queue_enqueueCount
+                sequence: 1
+              Dequeue Count:
+                dpName: queue_dequeueCount
+                sequence: 2
+          Message size:
+            units: bytes
+            width: 1000
+            miny: 0
+            graphpoints:
+              Average Message Size:
+                dpName: queue_averageMessageSize
+                sequence: 1
+              Max Message Size:
+                dpName: queue_maxMessageSize
+                sequence: 2
+
+      ActiveMQQueueDLQ:
+        targetPythonClass: ZenPacks.community.ActiveMQ.ActiveMQQueueDLQ
+        datasources:
+          jolokia:
+            type: Python
+            plugin_classname: ZenPacks.community.ActiveMQ.dsplugins.ActiveMQQueue.ActiveMQQueue
+            datapoints:
+              jolokia: GAUGE
+          queue:
+            type: Python
+            plugin_classname: ZenPacks.community.ActiveMQ.dsplugins.ActiveMQQueue.ActiveMQQueue
+            datapoints:
+              consumerCount:
+                rrdtype: GAUGE
+                createCmd: 'RRA:AVERAGE:0.5:1:600
+                  RRA:AVERAGE:0.5:6:600
+                  RRA:AVERAGE:0.5:24:600
+                  RRA:AVERAGE:0.5:288:600
+                  RRA:MAX:0.5:6:600
+                  RRA:MAX:0.5:24:600
+                  RRA:MAX:0.5:288:600
+                  RRA:LAST:0.5:1:600
+                  RRA:LAST:0.5:6:600
+                  RRA:LAST:0.5:24:600
+                  RRA:LAST:0.5:288:600'
+              enqueueCount:
+                rrdtype: GAUGE
+                createCmd: 'RRA:AVERAGE:0.5:1:600
+                  RRA:AVERAGE:0.5:6:600
+                  RRA:AVERAGE:0.5:24:600
+                  RRA:AVERAGE:0.5:288:600
+                  RRA:MAX:0.5:6:600
+                  RRA:MAX:0.5:24:600
+                  RRA:MAX:0.5:288:600
+                  RRA:LAST:0.5:1:600
+                  RRA:LAST:0.5:6:600
+                  RRA:LAST:0.5:24:600
+                  RRA:LAST:0.5:288:600'
+              dequeueCount:
+                rrdtype: GAUGE
+                createCmd: 'RRA:AVERAGE:0.5:1:600
+                  RRA:AVERAGE:0.5:6:600
+                  RRA:AVERAGE:0.5:24:600
+                  RRA:AVERAGE:0.5:288:600
+                  RRA:MAX:0.5:6:600
+                  RRA:MAX:0.5:24:600
+                  RRA:MAX:0.5:288:600
+                  RRA:LAST:0.5:1:600
+                  RRA:LAST:0.5:6:600
+                  RRA:LAST:0.5:24:600
+                  RRA:LAST:0.5:288:600'
+              expiredCount:
+                rrdtype: GAUGE
+                createCmd: 'RRA:AVERAGE:0.5:1:600
+                  RRA:AVERAGE:0.5:6:600
+                  RRA:AVERAGE:0.5:24:600
+                  RRA:AVERAGE:0.5:288:600
+                  RRA:MAX:0.5:6:600
+                  RRA:MAX:0.5:24:600
+                  RRA:MAX:0.5:288:600
+                  RRA:LAST:0.5:1:600
+                  RRA:LAST:0.5:6:600
+                  RRA:LAST:0.5:24:600
+                  RRA:LAST:0.5:288:600'
+              queueSize:
+                rrdtype: GAUGE
+                createCmd: 'RRA:AVERAGE:0.5:1:600
+                  RRA:AVERAGE:0.5:6:600
+                  RRA:AVERAGE:0.5:24:600
+                  RRA:AVERAGE:0.5:288:600
+                  RRA:MAX:0.5:6:600
+                  RRA:MAX:0.5:24:600
+                  RRA:MAX:0.5:288:600
+                  RRA:LAST:0.5:1:600
+                  RRA:LAST:0.5:6:600
+                  RRA:LAST:0.5:24:600
+                  RRA:LAST:0.5:288:600'
+              queueSizeDelta:
+                rrdtype: GAUGE
+                rrdmin: 0
+                createCmd: 'RRA:AVERAGE:0.5:1:600
+                  RRA:AVERAGE:0.5:6:600
+                  RRA:AVERAGE:0.5:24:600
+                  RRA:AVERAGE:0.5:288:600
+                  RRA:MAX:0.5:6:600
+                  RRA:MAX:0.5:24:600
+                  RRA:MAX:0.5:288:600
+                  RRA:LAST:0.5:1:600
+                  RRA:LAST:0.5:6:600
+                  RRA:LAST:0.5:24:600
+                  RRA:LAST:0.5:288:600'
+              averageMessageSize:
+                rrdtype: GAUGE
+                createCmd: 'RRA:AVERAGE:0.5:1:600
+                  RRA:AVERAGE:0.5:6:600
+                  RRA:AVERAGE:0.5:24:600
+                  RRA:AVERAGE:0.5:288:600
+                  RRA:MAX:0.5:6:600
+                  RRA:MAX:0.5:24:600
+                  RRA:MAX:0.5:288:600
+                  RRA:LAST:0.5:1:600
+                  RRA:LAST:0.5:6:600
+                  RRA:LAST:0.5:24:600
+                  RRA:LAST:0.5:288:600'
+              maxMessageSize:
+                rrdtype: GAUGE
+                createCmd: 'RRA:AVERAGE:0.5:1:600
+                  RRA:AVERAGE:0.5:6:600
+                  RRA:AVERAGE:0.5:24:600
+                  RRA:AVERAGE:0.5:288:600
+                  RRA:MAX:0.5:6:600
+                  RRA:MAX:0.5:24:600
+                  RRA:MAX:0.5:288:600
+                  RRA:LAST:0.5:1:600
+                  RRA:LAST:0.5:6:600
+                  RRA:LAST:0.5:24:600
+                  RRA:LAST:0.5:288:600'
+        thresholds:
+          DLQMessages:
+            dsnames: [queue_queueSizeDelta, queue_queueSize]
+            eventClass: /Status/ActiveMQ/DLQ
+            severity: 4
+            maxval: '0.1'
+        graphs:
+          Messages:
+            units: messages
+            width: 1000
+            miny: 0
+            graphpoints:
+              Consumer Count:
+                dpName: queue_consumerCount
+                sequence: 1
+              Expired Count:
+                dpName: queue_expiredCount
+                sequence: 2
+          Queue:
+            units: messages
+            width: 1000
+            miny: 0
+            graphpoints:
+              Queue Size:
+                dpName: queue_queueSize
+                sequence: 1
+              Queue Size Delta:
+                dpName: queue_queueSizeDelta
+                lineType: AREA
+                sequence: 2
+          Flow:
+            units: messages
+            width: 1000
+            miny: 0
+            graphpoints:
+              Enqueue Count:
+                dpName: queue_enqueueCount
+                sequence: 1
+              Dequeue Count:
+                dpName: queue_dequeueCount
+                sequence: 2
+          Message size:
+            units: bytes
+            width: 1000
+            miny: 0
+            graphpoints:
+              Average Message Size:
+                dpName: queue_averageMessageSize
+                sequence: 1
+              Max Message Size:
+                dpName: queue_maxMessageSize
+                sequence: 2
 
 event_classes:
   /Status/Jolokia:
@@ -424,6 +910,15 @@ event_classes:
   /Status/ActiveMQ/DLQ:
     remove: false
     description: ActiveMQ event class
+    transform: |-
+      evt.comp_type = '/App/DLV_AMQ'
+
+      try:
+          msg = 'There are {} messages in the DLQ {}'.format(int(float(evt.current)), evt.component)
+          evt.message = msg
+          evt.summary = msg
+      except:
+          pass
   /Status/ActiveMQ/Broker:
     remove: false
     description: ActiveMQ event class
