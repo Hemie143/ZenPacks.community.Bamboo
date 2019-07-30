@@ -15,6 +15,7 @@ zProperties:
     default: admin
 
 class_relationships:
+  - ActiveMQDevice 1:MC ActiveMQJVM
   - ActiveMQDevice 1:MC ActiveMQBroker
   - ActiveMQBroker 1:MC ActiveMQQueue
   - ActiveMQBroker 1:MC ActiveMQQueueDLQ
@@ -23,6 +24,10 @@ classes:
   ActiveMQDevice:
     base: [zenpacklib.Device]
     label: AMQ Device
+
+  ActiveMQJVM:
+    base: [zenpacklib.Component]
+    label: ActiveMQ JVM
 
   ActiveMQBroker:
     base: [zenpacklib.Component]
@@ -511,6 +516,69 @@ device_classes:
         - Device
 
     templates:
+      ActiveMQJVM:
+        targetPythonClass: ZenPacks.community.ActiveMQ.ActiveMQJVM
+        datasources:
+          jvm_memory:
+            type: Python
+            plugin_classname: ZenPacks.community.ActiveMQ.dsplugins.ActiveMQJVM.ActiveMQJVM
+            datapoints:
+              heap_committed:
+                rrdmin: 0
+                rrdtype: GAUGE
+              heap_max:
+                rrdmin: 0
+                rrdtype: GAUGE
+              heap_used:
+                rrdmin: 0
+                rrdtype: GAUGE
+              heap_used_percent:
+                rrdmin: 0
+                rrdmax: 100
+                rrdtype: GAUGE
+              nonheap_committed:
+                rrdmin: 0
+                rrdtype: GAUGE
+              nonheap_used:
+                rrdmin: 0
+                rrdtype: GAUGE
+        graphs:
+          HeapMemory:
+            units: bytes
+            miny: 0
+            base: True
+            graphpoints:
+              Committed:
+                dpName: jvm_memory_heap_committed
+                sequence: 1
+                lineType: AREA
+              Used:
+                dpName: jvm_memory_heap_used
+                sequence: 2
+                lineType: AREA
+          HeapMemoryPercentage:
+            units: percent
+            miny: 0
+            maxy: 100
+            graphpoints:
+              UsedPercentage:
+                dpName: jvm_memory_heap_used_percent
+                sequence: 1
+                lineType: AREA
+          NonHeapMemory:
+            units: bytes
+            miny: 0
+            base: True
+            graphpoints:
+              Committed:
+                dpName: jvm_memory_nonheap_committed
+                sequence: 1
+                lineType: AREA
+              Used:
+                dpName: jvm_memory_nonheap_used
+                sequence: 2
+                lineType: AREA
+
       ActiveMQBroker:
         targetPythonClass: ZenPacks.community.ActiveMQ.ActiveMQBroker
         datasources:

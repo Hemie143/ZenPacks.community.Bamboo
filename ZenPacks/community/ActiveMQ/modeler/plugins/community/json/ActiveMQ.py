@@ -128,12 +128,14 @@ class ActiveMQ(PythonPlugin):
             queues_data = queues_data.get('value', '')
 
         broker_maps = []
+        jvm_maps = []
         rm = []
         rm_queues = []
         rm_queuesdlq = []
 
         for broker, brokerAttr in brokers_data.items():
             om_broker = ObjectMap()
+            om_jvm = ObjectMap()
             queue_maps = []
             queuedlq_maps = []
 
@@ -144,6 +146,9 @@ class ActiveMQ(PythonPlugin):
             om_broker.version = brokerAttr.get('BrokerVersion')
             om_broker.objectName = broker
             broker_maps.append(om_broker)
+            om_jvm.id = self.prepId(broker_name)
+            om_jvm.title = broker_name
+            jvm_maps.append(om_jvm)
 
             compname_broker = 'activeMQBrokers/{}'.format(om_broker.id)
             queues = brokerAttr.get('Queues')
@@ -180,6 +185,12 @@ class ActiveMQ(PythonPlugin):
                                   modname='ZenPacks.community.ActiveMQ.ActiveMQBroker',
                                   compname='',
                                   objmaps=broker_maps))
+
+        rm.append(RelationshipMap(relname='activeMQJVMs',
+                                  modname='ZenPacks.community.ActiveMQ.ActiveMQJVM',
+                                  compname='',
+                                  objmaps=jvm_maps))
+
 
         rm.extend(rm_queues)
         rm.extend(rm_queuesdlq)

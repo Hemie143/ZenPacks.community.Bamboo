@@ -138,7 +138,7 @@ class ActiveMQQueue(PythonDataSourcePlugin):
                 ds = ddata[0]
                 if ds == 'jolokia':
                     # Data is not in JSON format
-                    ds_data[ds] = 'test'
+                    ds_data[ds] = 'OK'
                 else:
                     metrics = json.loads(ddata[1])
                     ds_data[ds] = metrics

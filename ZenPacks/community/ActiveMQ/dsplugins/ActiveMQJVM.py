@@ -16,10 +16,11 @@ from ZenPacks.zenoss.PythonCollector.datasources.PythonDataSource import PythonD
 from Products.ZenUtils.Utils import prepId
 
 # Setup logging
-log = logging.getLogger('zen.PythonAMQBroker')
+log = logging.getLogger('zen.PythonAMQJVM')
 
+# https://www.cs.mun.ca/java-api-1.5/guide/management/overview.html
 
-class ActiveMQBroker(PythonDataSourcePlugin):
+class ActiveMQJVM(PythonDataSourcePlugin):
 
     proxy_attributes = (
         'zJolokiaPort',
@@ -28,38 +29,39 @@ class ActiveMQBroker(PythonDataSourcePlugin):
     )
 
     # TODO: jolokia query should just get HTTP code back
-    # TODO: process jolokia in separate module to run once per host ???
+    # TODO: process jolokia in separate module to run once per host, but then how to use the result in other modules ?
     urls = {
         'jolokia': 'http://{}:{}/',
-        'brokerhealth': 'http://{}:{}/api/jolokia/read/{},service=Health/CurrentStatus',
-        'broker': 'http://{}:{}/api/jolokia/read/{}/UptimeMillis,StorePercentUsage,TempPercentUsage,CurrentConnectionsCount,MemoryPercentUsage',
+        #TODO: change next to jvm_mem
+        'jvm_memory': 'http://{}:{}/api/jolokia/read/java.lang:type=Memory',
     }
 
     @staticmethod
     def add_tag(result, label):
         return tuple((label, result))
 
-    # TODO: check config_key broker
+    # TODO: check config_key jvm
     @classmethod
     def config_key(cls, datasource, context):
         log.debug('In config_key {} {} {} {}'.format(context.device().id, datasource.getCycleTime(context),
-                                                     context.id, 'amq-broker'))
+                                                     context.id, 'amq-jvm'))
         return (
             context.device().id,
             datasource.getCycleTime(context),
             context.id,
-            'amq-broker'
+            'amq-jvm'
         )
 
     @classmethod
     def params(cls, datasource, context):
+        # TODO: is it required ?
         log.debug('Starting AMQDevice params')
-        params = {'objectName': context.objectName}
+        # params = {'objectName': context.objectName}
         log.debug('params is {}'.format(params))
         return params
 
     def collect(self, config):
-        log.debug('Starting ActiveMQ Broker collect')
+        log.debug('Starting ActiveMQ JVM collect')
 
         ip_address = config.manageIp
         if not ip_address:
@@ -69,20 +71,19 @@ class ActiveMQBroker(PythonDataSourcePlugin):
         deferreds = []
         sem = DeferredSemaphore(1)
 
-        '''
         ds0 = config.datasources[0]
-        point = TCP4ClientEndpoint(reactor, ip_address, ds0.zJolokiaPort)
-        d = connectProtocol(point, Protocol())
-        d.addCallback(self.add_tag, 'JolokiaPort')
-        deferreds.append(d)
-        '''
 
-        for datasource in config.datasources:
-            object_name = datasource.params['objectName']
-            url = self.urls[datasource.datasource].format(ip_address, datasource.zJolokiaPort, object_name)
-            basic_auth = base64.encodestring('{}:{}'.format(datasource.zJolokiaUsername, datasource.zJolokiaPassword))
+        # for datasource in config.datasources:
+        for endpoint in self.urls:
+
+            # object_name = datasource.params['objectName']
+            # url = self.urls[datasource.datasource].format(ip_address, datasource.zJolokiaPort)
+            url = self.urls[endpoint].format(ip_address, ds0.zJolokiaPort)
+            # basic_auth = base64.encodestring('{}:{}'.format(datasource.zJolokiaUsername, datasource.zJolokiaPassword))
+            basic_auth = base64.encodestring('{}:{}'.format(ds0.zJolokiaUsername, ds0.zJolokiaPassword))
             auth_header = "Basic " + basic_auth.strip()
             # TODO: replace getPage (deprecated)
+            # TODO: Use a POST instead of GET ???
             d = sem.run(getPage, url,
                         headers={
                             "Accept": "application/json",
@@ -90,23 +91,22 @@ class ActiveMQBroker(PythonDataSourcePlugin):
                             "User-Agent": "Mozilla/3.0Gold",
                         },
                         )
-            d.addCallback(self.add_tag, datasource.datasource)
+            d.addCallback(self.add_tag, endpoint)
             deferreds.append(d)
         return DeferredList(deferreds)
 
     def onSuccess(self, result, config):
         log.debug('Success - result is {}'.format(result))
 
-        # TODO: Move following block under next loop, in case of multiple brokers
         data = self.new_data()
-        broker_name = config.datasources[0].component
+        jvm_name = config.datasources[0].component
         ds_data = {}
 
         # Check that all data has been received correctly
         if any([not s for s, d in result]):
             data['events'].append({
                 'device': config.id,
-                'component': broker_name,
+                'component': jvm_name,
                 'severity': 3,
                 'eventKey': 'AMQBroker',
                 'eventClassKey': 'AMQBroker',
@@ -129,7 +129,7 @@ class ActiveMQBroker(PythonDataSourcePlugin):
             else:
                 data['events'].append({
                     'device': config.id,
-                    'component': broker_name,
+                    'component': jvm_name,
                     'severity': 3,
                     'eventKey': 'AMQBroker',
                     'eventClassKey': 'AMQBroker',
@@ -138,10 +138,10 @@ class ActiveMQBroker(PythonDataSourcePlugin):
                     'eventClass': '/Status/Jolokia',
                 })
 
-        # Broker data collection went fine
+        # JVM data collection went fine
         data['events'].append({
             'device': config.id,
-            'component': broker_name,
+            'component': jvm_name,
             'severity': 0,
             'eventKey': 'AMQBroker',
             'eventClassKey': 'AMQBroker',
@@ -153,45 +153,40 @@ class ActiveMQBroker(PythonDataSourcePlugin):
         # Generate metrics data per datasource
         for datasource in config.datasources:
             component = prepId(datasource.component)
-            if 'brokerhealth' not in ds_data:
-                continue
-            broker_health = ds_data['brokerhealth']['value']
-            if 'broker' not in ds_data:
-                continue
-            broker_values = ds_data['broker']['value']
-            uptimemillis = broker_values['UptimeMillis']
-            data['values'][component]['uptime'] = uptimemillis / 1000 / 60
-            data['values'][component]['memoryusage'] = broker_values['MemoryPercentUsage']
-            data['values'][component]['storeusage'] = broker_values['StorePercentUsage']
-            data['values'][component]['tempusage'] = broker_values['TempPercentUsage']
-            data['values'][component]['currentconnections'] = broker_values['CurrentConnectionsCount']
-            if broker_health.startswith('Good'):
-                data['values'][component]['health'] = 0
+            if datasource.datasource == 'jvm_memory':
+                status = ds_data[datasource.datasource]['status']
+                if status != 200:
+                    data['events'].append({
+                        'device': config.id,
+                        'component': jvm_name,
+                        'severity': 3,
+                        'eventKey': 'JVMMemory',
+                        'eventClassKey': 'JVMMemory',
+                        'summary': 'JVMMemory - Collection failed',
+                        'message': 'Memory MBean Status: {}'.format(status),
+                        'eventClass': '/Status/Jolokia',
+                    })
                 data['events'].append({
                     'device': config.id,
-                    'component': component,
+                    'component': jvm_name,
                     'severity': 0,
-                    'eventKey': 'AMQBrokerHealth',
-                    'eventClassKey': 'AMQBrokerHealth',
-                    'summary': 'Broker "{}" - Status is OK'.format(component),
-                    'message': broker_health,
-                    'eventClass': '/Status/ActiveMQ/Broker',
-                    'amqHealth': broker_health
+                    'eventKey': 'JVMMemory',
+                    'eventClassKey': 'JVMMemory',
+                    'summary': 'JVMMemory - OK',
+                    'message': 'JVMMemory - OK',
+                    'eventClass': '/Status/Jolokia',
                 })
-            else:
-                data['values'][component]['health'] = 3
-                data['events'].append({
-                    'device': config.id,
-                    'component': component,
-                    'severity': 3,
-                    'eventKey': 'AMQBrokerHealth',
-                    'eventClassKey': 'AMQBrokerHealth',
-                    'summary': 'Broker "{}" - Status failure'.format(component),
-                    'message': broker_health,
-                    'eventClass': '/Status/ActiveMQ/Broker',
-                    'amqHealth': broker_health
-                })
-        log.debug('ActiveMQBroker onSuccess data: {}'.format(data))
+                jvm_memory_values = ds_data[datasource.datasource]['value']
+                heap_values = jvm_memory_values['HeapMemoryUsage']
+                data['values'][component]['heap_committed'] = heap_values['committed']
+                data['values'][component]['heap_max'] = heap_values['max']
+                data['values'][component]['heap_used'] = heap_values['used']
+                data['values'][component]['heap_used_percent'] = round(float(heap_values['used'])/heap_values['max']*100, 2)
+                nonheap_values = jvm_memory_values['NonHeapMemoryUsage']
+                data['values'][component]['nonheap_committed'] = nonheap_values['committed']
+                data['values'][component]['nonheap_used'] = nonheap_values['used']
+
+        log.debug('ActiveMQJVM onSuccess data: {}'.format(data))
         return data
 
     def onError(self, result, config):
