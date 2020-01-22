@@ -1,0 +1,87 @@
+name: ZenPacks.community.Bamboo
+
+zProperties:
+  zBambooPort:
+    category: Bamboo
+    type: int
+    default: 443
+  zBambooUsername:
+    category: Bamboo
+    type: string
+    default: admin
+  zBambooPassword:
+    category: Bamboo
+    type: password
+    default: admin
+  zBambooServerAlias:
+    category: Bamboo
+    type: string
+    default:
+
+class_relationships:
+  - Products.ZenModel.Device.Device 1:MC BambooServer
+
+classes:
+  BambooServer:
+    base: [zenpacklib.Component]
+    label: Bamboo Server
+    properties:
+      status:
+        label: Status
+        type: string
+        datapoint: broker_info_status
+        renderer: Zenoss.render.severity
+        label_width: 40
+
+device_classes:
+  /Server:
+    templates:
+      BambooServer:
+        targetPythonClass: ZenPacks.community.Bamboo.BambooServer
+        datasources:
+          bamboo_info:
+            type: Python
+            plugin_classname: ZenPacks.community.Bamboo.dsplugins.Bamboo.BambooServer
+            datapoints:
+              status:
+                rrdtype: GAUGE
+          bamboo_queue:
+            type: Python
+            plugin_classname: ZenPacks.community.Bamboo.dsplugins.Bamboo.BambooServer
+            datapoints:
+              build_queue_length:
+                rrdmin: 0
+                rrdtype: GAUGE
+        thresholds:
+          queue_5:
+            dsnames: ['bamboo_queue_build_queue_length']
+            eventClass: /Status/Bamboo
+            severity: 3
+            maxval: 5
+          queue_10min:
+            type: DurationThreshold
+            dsnames: ['bamboo_queue_build_queue_length']
+            eventClass: /Status/Bamboo
+            severity: 4
+            maxval: 0.1
+            timePeriod: 10 minutes
+        graphs:
+          Build Queue:
+            units: builds
+            miny: 0
+            graphpoints:
+              Build Queue Length:
+                dpName: bamboo_queue_build_queue_length
+                lineType: AREA
+                sequence: 1
+
+event_classes:
+  /Status/Bamboo:
+    remove: false
+    description: Bamboo event class
+    transform: |-
+      if 'bamboo_queue_build_queue_length' in evt.eventKey:
+        msg = 'The Bamboo Build queue contains {} jobs'.format(int(float(evt.current)))
+        evt.message = msg
+        evt.summary = msg
+

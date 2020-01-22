@@ -2,13 +2,13 @@
 # These variables are overwritten by Zenoss when the ZenPack is exported
 # or saved.  Do not modify them directly here.
 # NB: PACKAGES is deprecated
-NAME = "ZenPacks.community.ActiveMQ"
-VERSION = "1.6.0"
+NAME = "ZenPacks.community.Bamboo"
+VERSION = "1.1.0"
 AUTHOR = "Laurent Hemeryck"
 LICENSE = "GPLv2"
 NAMESPACE_PACKAGES = ['ZenPacks', 'ZenPacks.community']
-PACKAGES = ['ZenPacks', 'ZenPacks.community', 'ZenPacks.community.ActiveMQ']
-INSTALL_REQUIRES = ['ZenPacks.zenoss.ZenPackLib']
+PACKAGES = ['ZenPacks', 'ZenPacks.community', 'ZenPacks.community.Bamboo']
+INSTALL_REQUIRES = ['ZenPacks.zenoss.ZenPackLib', 'ZenPacks.zenoss.DurationThreshold']
 COMPAT_ZENOSS_VERS = ""
 PREV_ZENPACK_NAME = ""
 # STOP_REPLACEMENTS
