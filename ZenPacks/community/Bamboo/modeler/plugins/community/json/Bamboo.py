@@ -1,18 +1,19 @@
 # stdlib Imports
+import base64
 import json
 
-# Twisted Imports
-from twisted.internet.defer import inlineCallbacks, returnValue, DeferredSemaphore, DeferredList
-from twisted.web.client import getPage
-
+import zope.component
 # Zenoss Imports
 from Products.DataCollector.plugins.CollectorPlugin import PythonPlugin
 from Products.DataCollector.plugins.DataMaps import ObjectMap, RelationshipMap
 from Products.ZenCollector.interfaces import IEventService
-from Products.ZenEvents import ZenEventClasses
-import zope.component
+from ZenPacks.community.Bamboo.lib.utils import SkipCertifContextFactory
 
-import base64
+# Twisted Imports
+from twisted.internet import reactor
+from twisted.internet.defer import inlineCallbacks, returnValue
+from twisted.web.client import Agent, readBody
+from twisted.web.http_headers import Headers
 
 
 class Bamboo(PythonPlugin):
@@ -47,60 +48,35 @@ class Bamboo(PythonPlugin):
         username = getattr(device, 'zBambooUsername', None)
         password = getattr(device, 'zBambooPassword', None)
         serverAlias = getattr(device, 'zBambooServerAlias', None)
-
         if not serverAlias:
             log.error("%s: zBambooServerAlias cannot be empty", device.id)
             returnValue(None)
 
         basic_auth = base64.encodestring('{}:{}'.format(username, password))
         auth_header = "Basic " + basic_auth.strip()
-        # url = 'https://{}:{}/rest/api/latest/info'.format(serverAlias, port)
-
         headers = {
-                      "Accept": 'application/json',
-                      "Authorization": auth_header,
-                      "User-Agent": 'Mozilla/3.0Gold',
+                      "Accept":['application/json'],
+                      "Authorization": [auth_header],
+                      "User-Agent": ['Mozilla/3.0Gold'],
                   }
 
-        deferreds = []
-        sem = DeferredSemaphore(1)
-        for comp in self.components:
-            url = comp[1].format(serverAlias, port)
+        results = {}
+        agent = Agent(reactor, contextFactory=SkipCertifContextFactory())
+
+        # deferreds = []
+        # sem = DeferredSemaphore(1)
+        # TODO: use try..except
+        # TODO: check response.code
+        for component, url_pattern in self.components:
+            url = url_pattern.format(serverAlias, port)
             log.debug('collect url: {}'.format(url))
-            d = sem.run(getPage, url,
-                        headers=headers,
-                        )
-            d.addCallback(self.add_tag, comp[0])
-            deferreds.append(d)
 
-        results = yield DeferredList(deferreds, consumeErrors=True)
-        for success, result in results:
-            if not success:
-                errorMessage = result.getErrorMessage()
-                log.error('{}: {}'.format(device.id, errorMessage))
-                self._eventService.sendEvent(dict(
-                    summary='Modeler plugin community.json.Bamboo returned no results.',
-                    message=errorMessage,
-                    eventClass='/Status/Bamboo',
-                    eventClassKey='Bamboo_ConnectionError',
-                    device=device.id,
-                    eventKey='|'.join(('BambooPlugin', device.id)),
-                    severity=ZenEventClasses.Error,
-                    ))
-                returnValue(None)
-
-        log.debug('Bamboo collect results: {}'.format(results))
-        self._eventService.sendEvent(dict(
-            summary='Modeler plugin community.json.Bamboo successful.',
-            message='',
-            eventClass='/Status/Bamboo',
-            eventClassKey='Bamboo_ConnectionOK',
-            device=device.id,
-            eventKey='|'.join(('BambooPlugin', device.id)),
-            severity=ZenEventClasses.Clear,
-        ))
+            response = yield agent.request('GET', url, Headers(headers))
+            response_body = yield readBody(response)
+            response_body = json.loads(response_body)
+            log.debug('response_body: {}'.format(response_body))
+            results[component] = response_body
         returnValue(results)
-
 
     def process(self, device, results, log):
         """
@@ -112,16 +88,7 @@ class Bamboo(PythonPlugin):
         """
         log.debug('Process results: {}'.format(results))
 
-        self.result_data = {}
-        for success, result in results:
-            if success:
-                if result:
-                    content = json.loads(result[1])
-                else:
-                    content = {}
-                self.result_data[result[0]] = content
-
-        bamboo_data = self.result_data.get('bamboo', '')
+        bamboo_data = results.get('bamboo', '')
         rm = []
         if bamboo_data:
             bamboo_maps = []
