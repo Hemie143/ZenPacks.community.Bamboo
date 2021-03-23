@@ -29,7 +29,7 @@ classes:
       status:
         label: Status
         type: string
-        datapoint: broker_info_status
+        datapoint: bamboo_info_status
         renderer: Zenoss.render.severity
         label_width: 40
 

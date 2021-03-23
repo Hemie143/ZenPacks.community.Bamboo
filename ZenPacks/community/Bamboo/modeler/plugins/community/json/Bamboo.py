@@ -2,11 +2,9 @@
 import base64
 import json
 
-import zope.component
 # Zenoss Imports
 from Products.DataCollector.plugins.CollectorPlugin import PythonPlugin
 from Products.DataCollector.plugins.DataMaps import ObjectMap, RelationshipMap
-from Products.ZenCollector.interfaces import IEventService
 from ZenPacks.community.Bamboo.lib.utils import SkipCertifContextFactory
 
 # Twisted Imports
@@ -21,8 +19,6 @@ class Bamboo(PythonPlugin):
     Doc about this plugin
     """
 
-    _eventService = zope.component.queryUtility(IEventService)
-
     requiredProperties = (
         'zBambooPort',
         'zBambooUsername',
@@ -35,10 +31,6 @@ class Bamboo(PythonPlugin):
     components = [
         ['bamboo', 'https://{}:{}/rest/api/latest/info'],
     ]
-
-    @staticmethod
-    def add_tag(result, label):
-        return tuple((label, result))
 
     @inlineCallbacks
     def collect(self, device, log):
@@ -63,8 +55,6 @@ class Bamboo(PythonPlugin):
         results = {}
         agent = Agent(reactor, contextFactory=SkipCertifContextFactory())
 
-        # deferreds = []
-        # sem = DeferredSemaphore(1)
         # TODO: use try..except
         # TODO: check response.code
         for component, url_pattern in self.components:
@@ -74,7 +64,6 @@ class Bamboo(PythonPlugin):
             response = yield agent.request('GET', url, Headers(headers))
             response_body = yield readBody(response)
             response_body = json.loads(response_body)
-            log.debug('response_body: {}'.format(response_body))
             results[component] = response_body
         returnValue(results)
 
