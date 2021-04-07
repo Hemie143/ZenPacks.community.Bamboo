@@ -74,6 +74,9 @@ device_classes:
                 dpName: bamboo_queue_build_queue_length
                 lineType: AREA
                 sequence: 1
+              queue_10min:
+                type: ThresholdGraphPoint
+                threshId: queue_10min
 
 event_classes:
   /Status/Bamboo:
