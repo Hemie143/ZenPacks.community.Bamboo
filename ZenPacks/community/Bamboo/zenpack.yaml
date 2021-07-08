@@ -20,6 +20,8 @@ zProperties:
 
 class_relationships:
   - Products.ZenModel.Device.Device 1:MC BambooServer
+  - BambooServer 1:MC BambooProject
+  - BambooProject 1:MC BambooPlan
 
 classes:
   BambooServer:
@@ -32,6 +34,12 @@ classes:
         datapoint: bamboo_info_status
         renderer: Zenoss.render.severity
         label_width: 40
+  BambooProject:
+    base: [zenpacklib.Component]
+    label: Bamboo Project
+  BambooPlan:
+    base: [zenpacklib.Component]
+    label: Bamboo Plan
 
 device_classes:
   /Server:
@@ -77,6 +85,10 @@ device_classes:
               queue_10min:
                 type: ThresholdGraphPoint
                 threshId: queue_10min
+      BambooProject:
+        targetPythonClass: ZenPacks.community.Bamboo.BambooProject
+      BambooPlan:
+        targetPythonClass: ZenPacks.community.Bamboo.BambooPlan
 
 event_classes:
   /Status/Bamboo:

@@ -28,9 +28,6 @@ class Bamboo(PythonPlugin):
 
     deviceProperties = PythonPlugin.deviceProperties + requiredProperties
 
-    components = [
-        ['bamboo', 'https://{}:{}/rest/api/latest/info'],
-    ]
 
     @inlineCallbacks
     def collect(self, device, log):
@@ -57,14 +54,39 @@ class Bamboo(PythonPlugin):
 
         # TODO: use try..except
         # TODO: check response.code
-        for component, url_pattern in self.components:
-            url = url_pattern.format(serverAlias, port)
-            log.debug('collect url: {}'.format(url))
+        # Bamboo server
+        url = 'https://{}:{}/rest/api/latest/info'.format(serverAlias, port)
+        log.debug('collect url: {}'.format(url))
 
-            response = yield agent.request('GET', url, Headers(headers))
-            response_body = yield readBody(response)
-            response_body = json.loads(response_body)
-            results[component] = response_body
+        response = yield agent.request('GET', url, Headers(headers))
+        response_body = yield readBody(response)
+        response_body = json.loads(response_body)
+        results['bamboo'] = response_body
+
+        # Sized output
+        limit = 25
+        urls = {
+            'projects': 'https://{}:{}/rest/api/latest/project?max-result={}&start-index={}',
+        }
+        for item, base_url in urls.items():
+            data = []
+            offset = 0
+            while True:
+                url = base_url.format(serverAlias, port, limit, offset)
+                log.debug('collect url: {}'.format(url))
+                response = yield agent.request('GET', url, Headers(headers))
+                response_body = yield readBody(response)
+                log.debug('response_body: {}'.format(response_body))
+                response_body = json.loads(response_body)
+                log.debug('projects: {}'.format(len(response_body['projects']['project'])))
+                log.debug('max-result: {}'.format(response_body['projects']['max-result']))
+                log.debug('size: {}'.format(response_body['projects']['size']))
+                # TODO: do not use project as string
+                data.extend(response_body['projects']['project'])
+                offset += limit
+                if len(data) >= response_body[item]['size'] or offset > response_body[item]['size']:
+                    break
+            results[item] = data
         returnValue(results)
 
     def process(self, device, results, log):
@@ -75,22 +97,23 @@ class Bamboo(PythonPlugin):
             - An ObjectMap, for the device device information
             - A list of RelationshipMaps and ObjectMaps, both
         """
-        log.debug('Process results: {}'.format(results))
+        # log.debug('Process results: {}'.format(results))
 
-        bamboo_data = results.get('bamboo', '')
         rm = []
-        if bamboo_data:
-            bamboo_maps = []
-            om_bamboo = ObjectMap()
-            bamboo_name = 'Bamboo {}'.format(bamboo_data['version'])
-            om_bamboo.id = self.prepId(bamboo_name)
-            om_bamboo.title = bamboo_name
-            bamboo_maps.append(om_bamboo)
-
-            rm.append(RelationshipMap(relname='bambooServers',
-                                      modname='ZenPacks.community.Bamboo.BambooServer',
-                                      compname='',
-                                      objmaps=bamboo_maps))
-
+        if 'bamboo' in results:
+            rm.append(self.model_bamboo(results['bamboo'], log))
+            if 'projects' in results:
+                # log.debug('project: {}'.format(results['project']))
+                log.debug('project: {}'.format(len(results['projects'])))
         log.debug('{}: process maps:{}'.format(device.id, rm))
         return rm
+
+    def model_bamboo(self, data, log):
+        om_bamboo = ObjectMap()
+        om_bamboo.id = 'bamboo'
+        om_bamboo.title = 'Bamboo {}'.format(data['version'])
+
+        return RelationshipMap(relname='bambooServers',
+                               modname='ZenPacks.community.Bamboo.BambooServer',
+                               compname='',
+                               objmaps=[om_bamboo])
