@@ -29,6 +29,7 @@ class BambooServer(PythonDataSourcePlugin):
         'zBambooServerAlias',
     )
 
+    # TODO: /status
     urls = {
         'bamboo_info': 'https://{}:{}/rest/api/latest/info',
         'bamboo_queue': 'https://{}:{}/rest/api/latest/queue',
