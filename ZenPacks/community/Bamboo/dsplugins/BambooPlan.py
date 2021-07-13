@@ -17,10 +17,10 @@ from twisted.web.client import Agent, readBody
 from twisted.web.http_headers import Headers
 
 # Setup logging
-log = logging.getLogger('zen.PythonBambooServer')
+log = logging.getLogger('zen.PythonBambooPlan')
 
 
-class BambooServer(PythonDataSourcePlugin):
+class BambooPlan(PythonDataSourcePlugin):
 
     proxy_attributes = (
         'zBambooPort',
@@ -38,18 +38,20 @@ class BambooServer(PythonDataSourcePlugin):
     # TODO: check config_key broker
     @classmethod
     def config_key(cls, datasource, context):
-        log.debug('In config_key {} {} {} {}'.format(context.device().id, datasource.getCycleTime(context),
-                                                     context.id, 'bamboo'))
+        log.debug('In config_key {} {} {} {}'.format(context.device().id,
+                                                     datasource.getCycleTime(context),
+                                                     context.id,
+                                                     'bambooPlan'))
         return (
             context.device().id,
             datasource.getCycleTime(context),
             context.id,
-            'bamboo'
+            'bambooPlan'
         )
 
     @classmethod
     def params(cls, datasource, context):
-        log.debug('Starting BambooServer params')
+        log.debug('Starting BambooPlan params')
         log.debug('params is {}'.format(params))
         return params
 
@@ -69,13 +71,11 @@ class BambooServer(PythonDataSourcePlugin):
                       "Authorization": [auth_header],
                       "User-Agent": ["Mozilla/3.0Gold"],
                   }
-
-        # deferreds = []
-        # sem = DeferredSemaphore(1)
+        base_url = 'https://{}:{}/rest/api/latest/result/{}/?expand=results.result'
         results = {}
         agent = Agent(reactor, contextFactory=SkipCertifContextFactory())
         for datasource in config.datasources:
-            url = self.urls[datasource.datasource].format(datasource.zBambooServerAlias, datasource.zBambooPort)
+            url = base_url.format(datasource.zBambooServerAlias, datasource.zBambooPort)
             try:
                 response = yield agent.request('GET', url, Headers(headers))
                 response_body = yield readBody(response)

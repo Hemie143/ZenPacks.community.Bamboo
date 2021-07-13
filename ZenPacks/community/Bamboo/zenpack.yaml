@@ -37,9 +37,23 @@ classes:
   BambooProject:
     base: [zenpacklib.Component]
     label: Bamboo Project
+    properties:
+      project_key:
+        label: Project Key
+        type: string
+        label_width: 40
   BambooPlan:
     base: [zenpacklib.Component]
     label: Bamboo Plan
+    properties:
+      project_key:
+        label: Project Key
+        type: string
+        label_width: 40
+      plan_key:
+        label: Plan Key
+        type: string
+        label_width: 40
 
 device_classes:
   /Server:
@@ -87,8 +101,20 @@ device_classes:
                 threshId: queue_10min
       BambooProject:
         targetPythonClass: ZenPacks.community.Bamboo.BambooProject
+        datasources:
+          bamboo_build_project:
+            type: Python
+            plugin_classname: ZenPacks.community.Bamboo.dsplugins.BambooProject.BambooProject
       BambooPlan:
         targetPythonClass: ZenPacks.community.Bamboo.BambooPlan
+        datasources:
+          bamboo_build_plan:
+            type: Python
+            # plugin_classname: ZenPacks.community.Bamboo.dsplugins.BambooPlan.BambooPlan
+            datapoints:
+              duration:
+                rrdtype: GAUGE
+
 
 event_classes:
   /Status/Bamboo:

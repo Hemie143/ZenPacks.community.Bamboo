@@ -9,6 +9,7 @@ from ZenPacks.community.Bamboo.lib.utils import SkipCertifContextFactory
 
 # Zenoss imports
 from ZenPacks.zenoss.PythonCollector.datasources.PythonDataSource import PythonDataSourcePlugin
+from Products.ZenUtils.Utils import prepId
 
 # Twisted Imports
 from twisted.internet import reactor
@@ -17,10 +18,10 @@ from twisted.web.client import Agent, readBody
 from twisted.web.http_headers import Headers
 
 # Setup logging
-log = logging.getLogger('zen.PythonBambooServer')
+log = logging.getLogger('zen.PythonBambooProject')
 
 
-class BambooServer(PythonDataSourcePlugin):
+class BambooProject(PythonDataSourcePlugin):
 
     proxy_attributes = (
         'zBambooPort',
@@ -38,18 +39,22 @@ class BambooServer(PythonDataSourcePlugin):
     # TODO: check config_key broker
     @classmethod
     def config_key(cls, datasource, context):
-        log.debug('In config_key {} {} {} {}'.format(context.device().id, datasource.getCycleTime(context),
-                                                     context.id, 'bamboo'))
+        log.debug('In config_key {} {} {} {}'.format(context.device().id,
+                                                     datasource.getCycleTime(context),
+                                                     context.id,
+                                                     'bambooPlan'))
         return (
             context.device().id,
             datasource.getCycleTime(context),
             context.id,
-            'bamboo'
+            'bambooPlan'
         )
 
     @classmethod
     def params(cls, datasource, context):
-        log.debug('Starting BambooServer params')
+        log.debug('Starting BambooProject params')
+        params = {}
+        params['project_key'] = context.project_key
         log.debug('params is {}'.format(params))
         return params
 
@@ -69,44 +74,40 @@ class BambooServer(PythonDataSourcePlugin):
                       "Authorization": [auth_header],
                       "User-Agent": ["Mozilla/3.0Gold"],
                   }
-
-        # deferreds = []
-        # sem = DeferredSemaphore(1)
+        base_url = 'https://{}:{}/rest/api/latest/result/{}/?expand=results.result'
         results = {}
         agent = Agent(reactor, contextFactory=SkipCertifContextFactory())
-        for datasource in config.datasources:
-            url = self.urls[datasource.datasource].format(datasource.zBambooServerAlias, datasource.zBambooPort)
-            try:
-                response = yield agent.request('GET', url, Headers(headers))
-                response_body = yield readBody(response)
-                response_body = json.loads(response_body)
-                results[datasource.datasource] = response_body
 
-            except Exception as e:
-                log.exception('{}: failed to get server data for {}'.format(config.id, ds0))
-                log.exception('{}: Exception: {}'.format(config.id, e))
+        url = base_url.format(ds0.zBambooServerAlias, ds0.zBambooPort, ds0.params['project_key'])
+        # Look for size > max-result
+        try:
+            response = yield agent.request('GET', url, Headers(headers))
+            response_body = yield readBody(response)
+            response_body = json.loads(response_body)
+            # results[datasource.datasource] = response_body
+            results = response_body
+        except Exception as e:
+            log.exception('{}: failed to get server data for {}'.format(config.id, ds0))
+            log.exception('{}: Exception: {}'.format(config.id, e))
         returnValue(results)
 
     def onSuccess(self, result, config):
-        log.debug('Success - result is {}'.format(result))
+        # log.debug('Success - result is {}'.format(result))
 
-        # TODO: Move following block under next loop, in case of multiple brokers
         data = self.new_data()
-        broker_name = config.datasources[0].component
-        component = prepId(broker_name)
-        ds_data = {}
-        # TODO: fill in data in a single loop, instead of 2 loops
 
-        # Generate metrics data per datasource
-        if 'bamboo_info' in result:
-            info_data = result['bamboo_info']
-            if info_data['state'] == 'RUNNING':
-                value = 0
-                msg = '{} - Status is OK'.format(component)
-            else:
-                value = 5
-                msg = '{} - Status is {}'.format(component, ds_data[datasource.datasource]['state'])
+        builds = result['results']
+        log.debug('AAAA max-result:{}'.format(builds['max-result']))
+        log.debug('AAAA size      :{}'.format(builds['size']))
 
+        for build in builds['result']:
+            duration = float(build['buildDuration']) / 1000
+            plan_key = build['plan']['key']
+            log.debug('plan: {} - duration: {}'.format(plan_key, duration))
+            component = prepId(plan_key)
+            data['values'][component]['bamboo_build_plan_duration'] = duration
+
+        '''
             data['values'][component]['status'] = value
             data['events'].append({
                 'device': config.id,
@@ -120,8 +121,9 @@ class BambooServer(PythonDataSourcePlugin):
             })
         if 'bamboo_queue' in result:
             data['values'][component]['build_queue_length'] = result['bamboo_queue']['queuedBuilds']['size']
+        '''
 
-        log.debug('BambooServer onSuccess data: {}'.format(data))
+        log.debug('BambooProject onSuccess data: {}'.format(data))
         return data
 
     def onError(self, result, config):

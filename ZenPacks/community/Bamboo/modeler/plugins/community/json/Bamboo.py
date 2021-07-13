@@ -73,7 +73,6 @@ class Bamboo(PythonPlugin):
         }
 
         limit = 25
-        # base_url = 'https://{}:{}/rest/api/latest/project?max-result={}&start-index={}&expand=projects.project'
         for item, base_url in urls.items():
             data = []
             offset = 0
@@ -122,6 +121,7 @@ class Bamboo(PythonPlugin):
                                objmaps=[om_bamboo])
 
     def model_projects(self, projects, log):
+        # TODO: Apply filters on projects ?
         project_maps = []
         for project in projects:
             om_project = ObjectMap()
@@ -129,8 +129,9 @@ class Bamboo(PythonPlugin):
             project_key = project['key']
             om_project.id = self.prepId(project_key)
             om_project.title = '{} ({})'.format(project_name, project_key)
-            om_project.key = project_key
+            # om_project.key = project_key
             om_project.desc = project.get('description', '')
+            om_project.project_key = project_key
             plans = project.get('plans', {})
             # log.debug('Project {} : Plans : {}'.format(project_name, plans['size']))
             project_maps.append(om_project)
@@ -141,6 +142,7 @@ class Bamboo(PythonPlugin):
                                )
 
     def model_plans(self, plans, project_keys, log):
+        # TODO: Apply filters on plans ?
         log.debug('Plans: {}'.format(len(plans)))
         log.debug('Plan: {}'.format(plans[0]))
         log.debug('project_keys: {}'.format(project_keys))
@@ -166,6 +168,8 @@ class Bamboo(PythonPlugin):
                 om_plan.title = '{} ({})'.format(plan_name, plan_key)
                 om_plan.enabled = plan['enabled']
                 om_plan.type = plan['type']
+                om_plan.project_key = project_key
+                om_plan.plan_key = plan_key
                 plan_maps.append(om_plan)
             rm.append(RelationshipMap(compname=compname,
                                       relname='bambooPlans',
